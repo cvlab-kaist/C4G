@@ -20,21 +20,21 @@
 
   <section id="overview" class="hero-section">
     <div class="hero-container">
-      <h1 class="hero-title">Learning Global Motion with Compact Gaussians for Feed-Forward 4D Reconstruction</h1>
+      <h1 class="hero-title">Learning Global Motion with Compact Gaussians<br>for Feed-Forward 4D Reconstruction</h1>
       <div class="hero-authors">
         <span>Mungyeom Kim<sup>1*</sup></span>
-        <span>Minkyeong Jeon<sup>1*</sup></span>
-        <span>Honggyu An<sup>1*</sup></span>
-        <span>Jaewoo Jung<sup>1</sup></span>
+        <span><a href="https://sites.google.com/view/minjeon/home" target="_blank">Minkyeong Jeon<sup>1*</sup></a></span>
+        <span><a href="https://hg010303.github.io/" target="_blank">Honggyu An<sup>1*</sup></a></span>
+        <span><a href="https://crepejung00.github.io/" target="_blank">Jaewoo Jung<sup>1</sup></a></span>
         <span>Hyunah Ko<sup>1</sup></span>
-        <span>Jisang Han<sup>1</sup></span>
+        <span><a href="https://onground-korea.github.io/" target="_blank">Jisang Han<sup>1</sup></a></span>
         <span>Hyeonseo Yu<sup>1</sup></span>
         <span>Donghwan Shin<sup>1</sup></span>
-        <span>Sunghwan Hong<sup>2</sup></span>
+        <span><a href="https://sunghwanhong.github.io/" target="_blank">Sunghwan Hong<sup>2</sup></a></span>
         <span>Takuya Narihira<sup>3</sup></span>
         <span>Kazumi Fukuda<sup>3</sup></span>
-        <span>Yuki Mitsufuji<sup>3,4†</sup></span>
-        <span>Seungryong Kim<sup>1†</sup></span>
+        <span><a href="https://www.yukimitsufuji.com/" target="_blank">Yuki Mitsufuji<sup>3,4†</sup></a></span>
+        <span><a href="https://cvlab.kaist.ac.kr/members/faculty" target="_blank">Seungryong Kim<sup>1†</sup></a></span>
       </div>
       <div class="hero-affiliations">
         <span><sup>1</sup>KAIST AI</span>
@@ -227,7 +227,7 @@
     }
     function renderImageCard(item) {
       const media = item.video
-        ? `<video controls autoplay loop muted playsinline preload="metadata" class="analysis-image" style="max-height:none; height:auto;"><source src="${item.video}" type="video/mp4">Your browser does not support the video tag.</video>`
+        ? `<div style="width:70%; margin:0 auto;"><video controls autoplay loop muted playsinline preload="metadata" class="analysis-image" style="max-height:none; height:auto;"><source src="${item.video}" type="video/mp4">Your browser does not support the video tag.</video></div>`
         : `<img src="${item.image}" class="analysis-image" alt="${item.title}">`;
       return `<div class="results-slide-content"><h3 class="results-slide-title">${item.title}</h3><div class="analysis-image-container">${media}</div><div class="results-caption"><p>${item.desc}</p></div></div>`;
     }
