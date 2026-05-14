@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Learning Global Motion with Compact Gaussians for Feed-Forward 4D Reconstruction</title>
+  <meta name="description" content="Project page for Learning Global Motion with Compact Gaussians for Feed-Forward 4D Reconstruction." />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/wanteddev/wanted-sans@v1.0.1/packages/wanted-sans/fonts/webfonts/variable/split/WantedSansVariable.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="sidebar">
+    <a href="#overview" class="sidebar-item"><div class="sidebar-dot"></div><span class="sidebar-label">Overview</span></a>
+    <a href="#previous-works" class="sidebar-item"><div class="sidebar-dot"></div><span class="sidebar-label">Previous Works</span></a>
+    <a href="#framework" class="sidebar-item"><div class="sidebar-dot"></div><span class="sidebar-label">Architecture</span></a>
+    <a href="#results" class="sidebar-item"><div class="sidebar-dot"></div><span class="sidebar-label">Results</span></a>
+    <a href="#citation" class="sidebar-item"><div class="sidebar-dot"></div><span class="sidebar-label">Citation</span></a>
+  </div>
+
+  <section id="overview" class="hero-section">
+    <div class="hero-container">
+      <h1 class="hero-title">Learning Global Motion with Compact Gaussians for Feed-Forward 4D Reconstruction</h1>
+      <div class="hero-authors">
+        <span>Mungyeom Kim<sup>1*</sup></span>
+        <span>Minkyeong Jeon<sup>1*</sup></span>
+        <span>Honggyu An<sup>1*</sup></span>
+        <span>Jaewoo Jung<sup>1</sup></span>
+        <span>Hyunah Ko<sup>1</sup></span>
+        <span>Jisang Han<sup>1</sup></span>
+        <span>Hyeonseo Yu<sup>1</sup></span>
+        <span>Donghwan Shin<sup>1</sup></span>
+        <span>Sunghwan Hong<sup>2</sup></span>
+        <span>Takuya Narihira<sup>3</sup></span>
+        <span>Kazumi Fukuda<sup>3</sup></span>
+        <span>Yuki Mitsufuji<sup>3,4†</sup></span>
+        <span>Seungryong Kim<sup>1†</sup></span>
+      </div>
+      <div class="hero-affiliations">
+        <span><sup>1</sup>KAIST AI</span>
+        <span><sup>2</sup>ETH AI Center, ETH Zurich</span>
+        <span><sup>3</sup>SONY AI</span>
+        <span><sup>4</sup>Sony Group Corporation</span>
+      </div>
+      <div class="hero-coauthor">
+        <span><sup>*</sup>Co-first authors</span>
+        <span><sup>†</sup>Co-advising authors</span>
+      </div>
+      <div class="hero-buttons">
+        <a href="#" class="btn"><i class="fa-solid fa-file-pdf"></i> Paper</a>
+        <a href="#citation" class="btn btn-outline"><i class="fa-solid fa-quote-right"></i> BibTeX</a>
+      </div>
+    </div>
+
+    <div class="teaser-container">
+      <div class="tldr-box">
+        <div class="tldr-content">
+          <span class="tldr-label">TL;DR</span>
+          <p class="tldr-text">We propose a feed-forward framework for dynamic 4D reconstruction from monocular videos using a <span class="tldr-highlight">compact set of timestamp-conditioned Gaussian queries</span> instead of per-pixel Gaussians, improving global motion modeling, reducing ghosting/occlusion failures, and using only <span class="tldr-highlight">2K Gaussians</span> without GT camera poses.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section alt-bg">
+    <div class="container">
+      <h2 class="section-title">Overview</h2>
+      <p>Dynamic monocular 4D reconstruction methods often predict Gaussians pixel-wise, which leads to redundancy and weak temporal reasoning. Our method replaces this design with learnable timestamp-conditioned queries that aggregate temporally and geometrically consistent evidence across the full sequence. This compact bottleneck encourages globally coherent motion modeling and robust novel-view synthesis even at larger temporal gaps.</p>
+      <p>To recover high-frequency details while preserving compactness, our framework further uses a diffusion-based rendering enhancement module. The same query-to-Gaussian aggregation behavior is then reused for feature lifting, enabling a feed-forward 4D feature field for downstream tasks such as point tracking and dynamic scene understanding.</p>
+    </div>
+  </section>
+
+  <section id="previous-works" class="section">
+    <div class="container">
+      <h2 class="section-title">Comparison with Previous Works</h2>
+      <div class="analysis-image-container" style="padding: 6px; width: 80%; max-width: 80%; margin: 0 auto;">
+        <img src="assets/figure2.png" class="analysis-image" alt="Figure 2 comparison" />
+      </div>
+      <ul style="list-style-type: disc; margin-left: 1.5rem; margin-top: 1rem; color: var(--color-text-main); font-size: 1.1rem; line-height: 1.6;">
+        <li><strong>Pixel-wise 4DGS:</strong> predicts per-pixel Gaussians, which leads to <strong>duplicated Gaussians and ghost artifacts</strong> at interpolated timestamps, and a <strong>view-dependent bias</strong> that underuses distant temporal evidence and leaves occluded regions poorly reconstructed.</li>
+        <li><strong>Our method:</strong> uses a <strong>compact query bottleneck</strong> to aggregate globally across time and views, yielding <strong>better motion consistency</strong> with fewer duplication and occlusion failures.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="framework" class="section alt-bg">
+    <div class="container">
+      <h2 class="section-title">Model Architecture</h2>
+      <p>Our model first extracts timestamp-injected visual features, then uses learnable queries refined by transformer decoding to produce timestamp-conditioned Gaussians. Query tokens gather geometrically coherent signals across frames, and decoded Gaussian positions are modulated by the target timestamp for temporal interpolation. A diffusion-based refinement module improves rendering fidelity, and a feature decoder reuses attention patterns for 4D feature lifting.</p>
+      <div class="analysis-image-container" style="padding: 6px; width: 100%; max-width: 100%;">
+        <img src="assets/figure_arch.png" class="analysis-image" alt="Figure architecture" />
+      </div>
+    </div>
+  </section>
+
+  <section id="results" class="section">
+    <div class="container">
+      <div class="results-block">
+        <h2 class="section-title">Quantitative Results</h2>
+        <div id="carousel-quan" class="carousel-container"></div>
+      </div>
+      <div class="results-block">
+        <h2 class="section-title">Qualitative Results</h2>
+        <div id="carousel-qual" class="carousel-container"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="citation" class="citation-section">
+    <div class="container">
+      <h2 class="section-title" style="font-size: 1.5rem; border: none; margin-bottom: 1rem;">Citation</h2>
+      <div class="citation-block group">
+        <button onclick="copyBibtex()" class="citation-copy-btn"><i class="fa-regular fa-copy"></i> Copy</button>
+<pre class="citation-code"><code id="bibtex-text">@article{kim2026learning,
+  title={Learning Global Motion with Compact Gaussians for Feed-Forward 4D Reconstruction},
+  author={Kim, Mungyeom and Jeon, Minkyeong and An, Honggyu and Jung, Jaewoo and Ko, Hyunah and Han, Jisang and Yu, Hyeonseo and Shin, Donghwan and Hong, Sunghwan and Narihira, Takuya and Fukuda, Kazumi and Mitsufuji, Yuki and Kim, Seungryong},
+  journal={},
+  year={2026}
+}</code></pre>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer"><div class="container"><p>Learning Global Motion with Compact Gaussians for Feed-Forward 4D Reconstruction</p></div></footer>
+
+  <script>
+    class Carousel {
+      constructor(containerId, data, renderItem) {
+        this.container = document.getElementById(containerId);
+        this.data = data;
+        this.renderItem = renderItem;
+        this.currentIndex = 0;
+        this.totalSlides = data.length;
+        this.init();
+      }
+      init() {
+        this.container.innerHTML = `
+          <div class="carousel-viewport"><div class="carousel-track">${this.data.map(item => `<div class="carousel-slide">${this.renderItem(item)}</div>`).join('')}</div></div>
+          <button class="carousel-nav-btn prev"><i class="fa-solid fa-chevron-left"></i></button>
+          <button class="carousel-nav-btn next"><i class="fa-solid fa-chevron-right"></i></button>
+          <div class="carousel-dots">${this.data.map((_, i) => `<button class="carousel-dot ${i===0?'active':''}" data-index="${i}"></button>`).join('')}</div>`;
+        this.track = this.container.querySelector('.carousel-track');
+        this.dots = this.container.querySelectorAll('.carousel-dots button');
+        this.container.querySelector('.carousel-nav-btn.prev').onclick = () => this.move(-1);
+        this.container.querySelector('.carousel-nav-btn.next').onclick = () => this.move(1);
+        this.dots.forEach((dot, i) => dot.onclick = () => this.goTo(i));
+        this.container.querySelectorAll('img').forEach((img) => {
+          img.addEventListener('load', () => this.updateHeight());
+        });
+        this.container.querySelectorAll('video').forEach((video) => {
+          video.addEventListener('loadedmetadata', () => this.updateHeight());
+          video.addEventListener('loadeddata', () => this.updateHeight());
+        });
+        this.updateHeight();
+      }
+      move(d) { this.currentIndex = (this.currentIndex + d + this.totalSlides) % this.totalSlides; this.update(); }
+      goTo(i) { this.currentIndex = i; this.update(); }
+      update() {
+        this.track.style.transform = `translateX(-${this.currentIndex * 100}%)`;
+        this.dots.forEach((dot, i) => dot.className = `carousel-dot ${i === this.currentIndex ? 'active' : ''}`);
+        this.updateHeight();
+      }
+      updateHeight() {
+        const slides = this.container.querySelectorAll('.carousel-slide');
+        const viewport = this.container.querySelector('.carousel-viewport');
+        if (slides[this.currentIndex] && viewport) viewport.style.height = `${slides[this.currentIndex].offsetHeight}px`;
+      }
+    }
+
+    const quantitativeData = [
+      {
+        title: "Table 1: Novel View Synthesis on Dynamic Datasets",
+        desc: "Our method achieves the strongest overall performance among pose-free methods with dramatically fewer Gaussians (2K).",
+        table: `<table class="quant-table"><thead><tr><th>Method</th><th>Per-scene</th><th>Pose</th><th>#G</th><th>DyCheck PSNR/SSIM/LPIPS</th><th>ADT PSNR/SSIM/LPIPS</th><th>TUM-Dynamics PSNR/SSIM/LPIPS</th><th>NVIDIA PSNR/SSIM/LPIPS</th></tr></thead><tbody>
+          <tr><td>Shape of Motion [82]</td><td>✓</td><td>✓</td><td><u>128K</u></td><td><u>14.13</u> / 0.313 / 0.690</td><td>- / - / -</td><td>14.29 / 0.453 / 0.552</td><td>10.86 / 0.280 / 0.791</td></tr>
+          <tr><td>MoSca [40]</td><td>✓</td><td>✓</td><td>342K</td><td>11.93 / 0.252 / 0.700</td><td>2.419 / 0.343 / 0.892</td><td>9.765 / 0.247 / 0.654</td><td>12.62 / 0.269 / 0.691</td></tr>
+          <tr><td>4DGT [91]</td><td>✗</td><td>✓</td><td>272K</td><td>12.15 / 0.247 / 0.477</td><td>19.22 / <strong>0.717</strong> / <strong>0.260</strong></td><td><u>17.27</u> / <u>0.578</u> / <u>0.329</u></td><td>15.64 / <u>0.349</u> / 0.614</td></tr>
+          <tr><td>MoVieS [48]</td><td>✗</td><td>✓</td><td>802K</td><td>11.99 / <u>0.352</u> / <strong>0.359</strong></td><td><u>20.35</u> / 0.526 / 0.394</td><td>14.91 / 0.378 / 0.395</td><td>13.71 / 0.211 / 0.596</td></tr>
+          <tr><td>NeoVerse [93]</td><td>✗</td><td>✗</td><td>802K</td><td>11.90 / 0.251 / 0.450</td><td>21.94 / 0.629 / <u>0.270</u></td><td>15.26 / 0.437 / 0.415</td><td><u>15.86</u> / 0.322 / <u>0.492</u></td></tr>
+          <tr><td><strong>Ours</strong></td><td>✗</td><td>✗</td><td><strong>2K</strong></td><td><strong>15.64</strong> / <strong>0.388</strong> / <u>0.384</u></td><td><strong>22.35</strong> / <u>0.631</u> / 0.313</td><td><strong>19.52</strong> / <strong>0.603</strong> / <strong>0.306</strong></td><td><strong>20.51</strong> / <strong>0.489</strong> / <strong>0.393</strong></td></tr>
+        </tbody></table>`
+      },
+      {
+        title: "Table 2: Temporal Gap Robustness on TUM-Dynamics",
+        desc: "Our method degrades less as temporal interval Δt increases.",
+        table: `<table class="quant-table"><thead><tr><th>Method</th><th>Pose</th><th>Δt=2</th><th>Δt=4</th><th>Δt=6</th><th>Δt=8</th></tr></thead><tbody>
+          <tr><td>4DGT [91]</td><td>✓</td><td>19.27 / <strong>0.674</strong> / <u>0.251</u></td><td>18.08 / <strong>0.623</strong> / 0.297</td><td><u>17.27</u> / <u>0.578</u> / <u>0.329</u></td><td><u>16.27</u> / <u>0.547</u> / <u>0.351</u></td></tr>
+          <tr><td>MoVieS [48]</td><td>✓</td><td>16.30 / 0.441 / 0.314</td><td>15.93 / 0.432 / 0.334</td><td>14.91 / 0.378 / 0.395</td><td>14.23 / 0.322 / 0.428</td></tr>
+          <tr><td>NeoVerse [93]</td><td>✗</td><td><u>20.14</u> / <u>0.671</u> / <strong>0.216</strong></td><td><u>18.23</u> / 0.575 / <u>0.296</u></td><td>15.26 / 0.437 / 0.415</td><td>15.94 / 0.475 / 0.387</td></tr>
+          <tr><td><strong>Ours</strong></td><td>✗</td><td><strong>20.59</strong> / 0.647 / 0.267</td><td><strong>20.00</strong> / <u>0.619</u> / <strong>0.290</strong></td><td><strong>19.52</strong> / <strong>0.603</strong> / <strong>0.306</strong></td><td><strong>19.23</strong> / <strong>0.599</strong> / <strong>0.311</strong></td></tr>
+        </tbody></table>`
+      },
+      {
+        title: "Table 3: Temporal-Invariant Feature",
+        desc: "Feature lifting from our framework improves temporal consistency for both DINOv3-L and VGGT-Tracking features.",
+        table: `<table class="quant-table"><thead>
+          <tr><th rowspan="2">Method</th><th colspan="4">RGB-stacking [38,12]</th><th colspan="4">DAVIS [65,12]</th></tr>
+          <tr><th>&lt;δ0</th><th>&lt;δ2</th><th>&lt;δ4</th><th>δavg</th><th>&lt;δ0</th><th>&lt;δ2</th><th>&lt;δ4</th><th>δavg</th></tr>
+          </thead><tbody>
+          <tr><td>DINOv3-L [73]</td><td>1.3</td><td>11.3</td><td>65.6</td><td>23.2</td><td>0.6</td><td>6.2</td><td>40.7</td><td>13.7</td></tr>
+          <tr><td>DINOv3-L [73] + Ours</td><td><strong>6.9</strong></td><td><strong>38.3</strong></td><td><strong>74.4</strong></td><td><strong>39.3</strong></td><td>2.2</td><td>19.8</td><td>63.1</td><td>27.1</td></tr>
+          <tr><td>VGGT-Tracking [81]</td><td>1.1</td><td>15.9</td><td>63.6</td><td>24.8</td><td>2.7</td><td>17.9</td><td>54.0</td><td>23.1</td></tr>
+          <tr><td>VGGT-Tracking [81] + Ours</td><td><u>4.9</u></td><td><u>28.7</u></td><td><u>68.0</u></td><td><u>33.0</u></td><td><strong>4.4</strong></td><td><strong>23.4</strong></td><td><strong>68.7</strong></td><td><strong>30.5</strong></td></tr>
+        </tbody></table>`
+      },
+      {
+        title: "Table 4: Dynamic Scene Understanding (DAVIS)",
+        desc: "Our framework lifts semantics into 4D and outperforms prior feed-forward methods.",
+        table: `<table class="quant-table"><thead><tr><th>Method</th><th>mIoU</th><th>Acc</th><th>PSNR</th><th>SSIM</th><th>LPIPS</th></tr></thead><tbody>
+          <tr><td>LSeg [42]</td><td>0.550</td><td>0.801</td><td>-</td><td>-</td><td>-</td></tr>
+          <tr><td>LSM [14]</td><td><u>0.615</u></td><td><u>0.844</u></td><td>14.320</td><td>0.310</td><td>0.517</td></tr>
+          <tr><td>C3G [1]</td><td>0.345</td><td>0.528</td><td><u>18.623</u></td><td><u>0.376</u></td><td><u>0.460</u></td></tr>
+          <tr><td><strong>Ours</strong></td><td><strong>0.634</strong></td><td><strong>0.854</strong></td><td><strong>20.181</strong></td><td><strong>0.426</strong></td><td><strong>0.359</strong></td></tr>
+        </tbody></table>`
+      }
+    ];
+
+    const qualitativeData = [
+      { title: "Video Results", desc: "Qualitative video result on DAVIS scene: boat.", video: "./assets/boat_wan.mp4" },
+      { title: "Video Results", desc: "Qualitative video result on DAVIS scene: camel.", video: "./assets/camel_wan.mp4" },
+      { title: "Video Results", desc: "Qualitative video result on DAVIS scene: planes-water.", video: "./assets/planes-water_wan.mp4" },
+      { title: "Video Results", desc: "Qualitative video result on DAVIS scene: gold-fish.", video: "./assets/gold-fish_wan.mp4" }
+    ];
+
+    function renderQuantitative(item) {
+      return `<div class="results-slide-content"><h3 class="results-slide-title">${item.title}</h3><div class="analysis-image-container" style="padding:0 20px; background:transparent; border:none;"><div class="quant-table-wrapper">${item.table}</div></div><div class="results-caption"><p>${item.desc}</p></div></div>`;
+    }
+    function renderImageCard(item) {
+      const media = item.video
+        ? `<video controls autoplay loop muted playsinline preload="metadata" class="analysis-image" style="max-height:none; height:auto;"><source src="${item.video}" type="video/mp4">Your browser does not support the video tag.</video>`
+        : `<img src="${item.image}" class="analysis-image" alt="${item.title}">`;
+      return `<div class="results-slide-content"><h3 class="results-slide-title">${item.title}</h3><div class="analysis-image-container">${media}</div><div class="results-caption"><p>${item.desc}</p></div></div>`;
+    }
+
+    function initScrollSpy() {
+      const sections = document.querySelectorAll('section[id]');
+      const sidebarLinks = document.querySelectorAll('.sidebar-item');
+      const sidebar = document.querySelector('.sidebar');
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (!entry.isIntersecting) return;
+          const id = entry.target.getAttribute('id');
+          sidebarLinks.forEach(link => link.classList.remove('active'));
+          const activeLink = document.querySelector(`.sidebar-item[href="#${id}"]`);
+          if (activeLink) {
+            activeLink.classList.add('active');
+            const linkRect = activeLink.getBoundingClientRect();
+            const sidebarRect = sidebar.getBoundingClientRect();
+            sidebar.style.setProperty('--active-position', `${linkRect.top - sidebarRect.top - 32}px`);
+          }
+        });
+      }, { root: null, rootMargin: '-50% 0px -50% 0px', threshold: 0 });
+      sections.forEach(section => observer.observe(section));
+    }
+
+    function copyBibtex() {
+      const text = document.getElementById('bibtex-text').innerText;
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = document.querySelector('.citation-copy-btn');
+        const original = btn.innerHTML;
+        btn.innerHTML = '<i class="fa-solid fa-check"></i> Copied!';
+        setTimeout(() => { btn.innerHTML = original; }, 2000);
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      new Carousel('carousel-quan', quantitativeData, renderQuantitative);
+      new Carousel('carousel-qual', qualitativeData, renderImageCard);
+      initScrollSpy();
+    });
+  </script>
+</body>
+</html>
