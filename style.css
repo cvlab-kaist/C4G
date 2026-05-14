@@ -300,9 +300,10 @@ p {
 }
 
 .hero-title-line {
-    display: block;
-    width: 100%;
-    white-space: nowrap;
+    display: inline-block;
+    width: fit-content;
+    max-width: 100%;
+    text-align: center;
 }
 
 .hero-title .gradient-text {
