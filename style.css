@@ -291,6 +291,7 @@ p {
     font-weight: 700;
     margin-bottom: 1rem;
     line-height: 1.25;
+    text-align: center;
 }
 
 .hero-title .gradient-text {
@@ -1054,4 +1055,3 @@ p {
     color: var(--color-primary);
     font-weight: 800;
 }
-
