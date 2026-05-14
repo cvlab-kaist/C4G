@@ -20,7 +20,10 @@
 
   <section id="overview" class="hero-section">
     <div class="hero-container">
-      <h1 class="hero-title">Learning Global Motion with Compact Gaussians<br>for Feed-Forward 4D Reconstruction</h1>
+      <h1 class="hero-title">
+        <span style="display:block; white-space:nowrap;">Learning Global Motion with Compact Gaussians</span>
+        <span style="display:block; white-space:nowrap;">for Feed-Forward 4D Reconstruction</span>
+      </h1>
       <div class="hero-authors">
         <span>Mungyeom Kim<sup>1*</sup></span>
         <span><a href="https://sites.google.com/view/minjeon/home" target="_blank">Minkyeong Jeon<sup>1*</sup></a></span>
@@ -216,20 +219,22 @@
     ];
 
     const qualitativeData = [
-      { title: "Video Results", desc: "Qualitative video result on DAVIS scene: boat.", video: "./assets/boat_wan.mp4" },
-      { title: "Video Results", desc: "Qualitative video result on DAVIS scene: camel.", video: "./assets/camel_wan.mp4" },
-      { title: "Video Results", desc: "Qualitative video result on DAVIS scene: planes-water.", video: "./assets/planes-water_wan.mp4" },
-      { title: "Video Results", desc: "Qualitative video result on DAVIS scene: gold-fish.", video: "./assets/gold-fish_wan.mp4" }
+      { title: "Video Results (Including In-between Keyframe Prediction)", desc: "Qualitative video result on DAVIS scene: boat.", video: "./assets/boat_wan.mp4" },
+      { title: "Video Results (Including In-between Keyframe Prediction)", desc: "Qualitative video result on DAVIS scene: camel.", video: "./assets/camel_wan.mp4" },
+      { title: "Video Results (Including In-between Keyframe Prediction)", desc: "Qualitative video result on DAVIS scene: planes-water.", video: "./assets/planes-water_wan.mp4" },
+      { title: "Video Results (Including In-between Keyframe Prediction)", desc: "Qualitative video result on DAVIS scene: gold-fish.", video: "./assets/gold-fish_wan.mp4" }
     ];
 
     function renderQuantitative(item) {
       return `<div class="results-slide-content"><h3 class="results-slide-title">${item.title}</h3><div class="analysis-image-container" style="padding:0 20px; background:transparent; border:none;"><div class="quant-table-wrapper">${item.table}</div></div><div class="results-caption"><p>${item.desc}</p></div></div>`;
     }
     function renderImageCard(item) {
-      const media = item.video
-        ? `<div style="width:70%; margin:0 auto;"><video controls autoplay loop muted playsinline preload="metadata" class="analysis-image" style="max-height:none; height:auto;"><source src="${item.video}" type="video/mp4">Your browser does not support the video tag.</video></div>`
+      const isVideo = !!item.video;
+      const media = isVideo
+        ? `<video controls autoplay loop muted playsinline preload="metadata" class="analysis-image" style="max-height:none; height:auto;"><source src="${item.video}" type="video/mp4">Your browser does not support the video tag.</video>`
         : `<img src="${item.image}" class="analysis-image" alt="${item.title}">`;
-      return `<div class="results-slide-content"><h3 class="results-slide-title">${item.title}</h3><div class="analysis-image-container">${media}</div><div class="results-caption"><p>${item.desc}</p></div></div>`;
+      const containerStyle = isVideo ? ` style="width:70%; max-width:70%; margin:0 auto;"` : "";
+      return `<div class="results-slide-content"><h3 class="results-slide-title">${item.title}</h3><div class="analysis-image-container"${containerStyle}>${media}</div><div class="results-caption"><p>${item.desc}</p></div></div>`;
     }
 
     function initScrollSpy() {
