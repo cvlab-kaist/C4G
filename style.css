@@ -295,6 +295,10 @@ p {
     color: #0d1426;
 }
 
+.hero-title-line {
+    display: block;
+}
+
 .hero-title .gradient-text {
     background: linear-gradient(to right, var(--color-primary), var(--color-primary));
     -webkit-background-clip: text;
