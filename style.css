@@ -12,28 +12,28 @@
     --caption-font-size: 1rem;
 
     /* Colors - Brand */
-    --color-primary: #22869A;
-    /* Teal 600 */
-    --color-primary-light: #2dd4bf;
-    /* Teal 400 */
-    --color-primary-dark: #22869A;
-    /* Teal 700 */
-    --color-cat3d: #8fdcd4;
+    --color-primary: #DAE7FF;
+    /* Blue 100 */
+    --color-primary-light: #EEF4FF;
+    /* Blue 50 */
+    --color-primary-dark: #AFC7F5;
+    /* Blue 300 */
+    --color-cat3d: #C7D8F8;
 
     /* Colors - Grayscale */
     --color-bg: #ffffff;
-    --color-bg-alt: rgb(251, 255, 254);
-    /* Slate 50 */
-    --color-text-main: #1e293b;
-    /* Slate 800 */
-    --color-text-muted: #64748b;
-    /* Slate 500 */
-    --color-text-light: #94a3b8;
-    /* Slate 400 */
-    --color-border: #e2e8f0;
-    /* Slate 200 */
-    --color-border-light: #f1f5f9;
-    /* Slate 100 */
+    --color-bg-alt: #F7FAFF;
+    /* Blue tint 50 */
+    --color-text-main: #1E2A44;
+    /* Blue-gray 800 */
+    --color-text-muted: #5E6E8C;
+    /* Blue-gray 500 */
+    --color-text-light: #8A98B2;
+    /* Blue-gray 400 */
+    --color-border: #D6E2F7;
+    /* Blue-gray 200 */
+    --color-border-light: #ECF2FC;
+    /* Blue-gray 100 */
 
     /* Layout */
     --container-width: 80rem;
