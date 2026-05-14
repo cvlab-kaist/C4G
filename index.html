@@ -59,7 +59,7 @@
       <div class="tldr-box">
         <div class="tldr-content">
           <span class="tldr-label">TL;DR</span>
-          <p class="tldr-text">We propose a feed-forward framework for dynamic 4D reconstruction from monocular videos using a <span class="tldr-highlight">compact set of timestamp-conditioned Gaussian queries</span> instead of per-pixel Gaussians, improving global motion modeling, reducing ghosting/occlusion failures, and using only <span class="tldr-highlight">2K Gaussians</span> without GT camera poses.</p>
+          <p class="tldr-text">We propose a feed-forward dynamic reconstruction network that effectively captures the <strong>global motion of dynamic scenes</strong>. Our method employs a timestamp-conditioned, query-based transformer Gaussian decoder that aggregates geometrically consistent features from multi-frame videos, enabling each Gaussian to model globally coherent motion.</p>
         </div>
       </div>
     </div>
@@ -68,8 +68,8 @@
   <section class="section alt-bg">
     <div class="container">
       <h2 class="section-title">Overview</h2>
-      <p>Dynamic monocular 4D reconstruction methods often predict Gaussians pixel-wise, which leads to redundancy and weak temporal reasoning. Our method replaces this design with learnable timestamp-conditioned queries that aggregate temporally and geometrically consistent evidence across the full sequence. This compact bottleneck encourages globally coherent motion modeling and robust novel-view synthesis even at larger temporal gaps.</p>
-      <p>To recover high-frequency details while preserving compactness, our framework further uses a diffusion-based rendering enhancement module. The same query-to-Gaussian aggregation behavior is then reused for feature lifting, enabling a feed-forward 4D feature field for downstream tasks such as point tracking and dynamic scene understanding.</p>
+      <p>Existing feed-forward dynamic reconstruction methods predict pixel-wise 3D Gaussians for each frame, suffering from duplicated Gaussians and view-dependent biases that lead to ghost artifacts and occlusion issues. Our method replaces this design with learnable timestamp-conditioned queries that aggregate temporally and geometrically consistent evidence across the entire sequence. This compact bottleneck encourages globally coherent motion modeling and enables robust novel-view synthesis even under large temporal gaps.</p>
+      <p>To recover high-frequency details while preserving compactness, our framework further incorporates a diffusion-based rendering enhancement module. The same query-to-Gaussian aggregation is then reused for feature lifting, yielding a feed-forward 4D feature field that supports downstream tasks such as point tracking and dynamic scene understanding.</p>
     </div>
   </section>
 
@@ -114,7 +114,7 @@
       <h2 class="section-title" style="font-size: 1.5rem; border: none; margin-bottom: 1rem;">Citation</h2>
       <div class="citation-block group">
         <button onclick="copyBibtex()" class="citation-copy-btn"><i class="fa-regular fa-copy"></i> Copy</button>
-<pre class="citation-code"><code id="bibtex-text">@article{kim2026learning,
+<pre class="citation-code"><code id="bibtex-text">@article{,
   title={Learning Global Motion with Compact Gaussians for Feed-Forward 4D Reconstruction},
   author={Kim, Mungyeom and Jeon, Minkyeong and An, Honggyu and Jung, Jaewoo and Ko, Hyunah and Han, Jisang and Yu, Hyeonseo and Shin, Donghwan and Hong, Sunghwan and Narihira, Takuya and Fukuda, Kazumi and Mitsufuji, Yuki and Kim, Seungryong},
   journal={},
