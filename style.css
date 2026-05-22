@@ -38,7 +38,7 @@
     /* Layout */
     --container-width: 80rem;
     --header-height: 4rem;
-    --sidebar-width: 160px;
+    --sidebar-width: 220px;
 }
 
 /* Reset & Base */
@@ -286,20 +286,6 @@ p {
     position: relative;
 }
 
-.hero-version-badge {
-    position: absolute;
-    top: -1.2rem;
-    right: 0;
-    padding: 0.35rem 0.7rem;
-    border-radius: 9999px;
-    background: rgba(13, 20, 38, 0.08);
-    border: 1px solid rgba(13, 20, 38, 0.18);
-    color: #0d1426;
-    font-size: 0.78rem;
-    font-weight: 600;
-    letter-spacing: 0.03em;
-}
-
 .hero-title {
     font-size: clamp(1.4rem, 2.6vw, 2.8rem);
     /* 4xl */
@@ -338,6 +324,24 @@ p {
     margin-top: -0.6rem;
     display: inline-block;
     vertical-align: middle;
+}
+
+
+@media (max-width: 767px) {
+    .hero-title {
+        display: block;
+    }
+
+    .hero-title-line {
+        display: inline;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        word-break: normal;
+    }
+
+    .hero-title-line + .hero-title-line::before {
+        content: ' ';
+    }
 }
 
 @media (min-width: 768px) {
@@ -485,6 +489,7 @@ p {
     gap: 1rem;
 }
 
+
 @media (min-width: 768px) {
     .tldr-content {
         flex-direction: row;
@@ -525,6 +530,7 @@ p {
     width: 100%;
     margin: 2rem 0;
 }
+
 
 @media (min-width: 768px) {
     .comparison-grid {
@@ -791,6 +797,7 @@ p {
     right: -1rem;
 }
 
+
 @media (min-width: 768px) {
     .carousel-nav-btn.prev {
         left: -3rem;
@@ -847,6 +854,7 @@ p {
     margin-bottom: 1rem;
 }
 
+
 @media (min-width: 768px) {
     .chart-grid.cols-2 {
         grid-template-columns: repeat(2, 1fr);
@@ -882,6 +890,7 @@ p {
     line-height: 1.625;
     margin-bottom: 0;
 }
+
 
 @media (min-width: 768px) {
     .results-caption p {
@@ -960,6 +969,7 @@ p {
     line-height: 1.625;
     color: var(--color-border);
 }
+
 
 @media (min-width: 768px) {
     .qual-desc {
