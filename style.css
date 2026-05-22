@@ -1045,11 +1045,6 @@ p {
         --caption-font-size: 0.875rem;
     }
 
-    .hero-version-badge {
-        position: static;
-        display: inline-block;
-        margin-bottom: 0.8rem;
-    }
 }
 
 /* Quantitative comparison table styles */
