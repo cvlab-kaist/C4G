@@ -294,7 +294,7 @@ p {
     line-height: 1.25;
     text-align: center;
     color: #0d1426;
-    max-width: 22ch;
+    max-width: min(100%, 34ch);
     overflow-wrap: break-word;
     word-break: normal;
 }
