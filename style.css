@@ -294,7 +294,8 @@ p {
     line-height: 1.25;
     text-align: center;
     color: #0d1426;
-    max-width: min(100%, 34ch);
+    max-width: min(100%, 42ch);
+    text-wrap: balance;
     overflow-wrap: break-word;
     word-break: normal;
 }
@@ -319,13 +320,6 @@ p {
 
 
 
-@media (min-width: 768px) {
-    .hero-title {
-        font-size: 2.8rem;
-    }
-
-    /* md:text-6xl */
-}
 
 .hero-status {
     font-size: 1.25rem;
