@@ -283,10 +283,25 @@ p {
     max-width: 64rem;
     /* max-w-5xl */
     margin: 0 auto 3rem auto;
+    position: relative;
+}
+
+.hero-version-badge {
+    position: absolute;
+    top: -1.2rem;
+    right: 0;
+    padding: 0.35rem 0.7rem;
+    border-radius: 9999px;
+    background: rgba(13, 20, 38, 0.08);
+    border: 1px solid rgba(13, 20, 38, 0.18);
+    color: #0d1426;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
 }
 
 .hero-title {
-    font-size: clamp(2rem, 4vw, 4rem);
+    font-size: clamp(1.4rem, 2.6vw, 2.8rem);
     /* 4xl */
     font-weight: 700;
     margin-bottom: 1rem;
@@ -300,9 +315,11 @@ p {
 }
 
 .hero-title-line {
-    display: block;
-    width: 100%;
+    display: inline-block;
     white-space: nowrap;
+    overflow-wrap: normal;
+    word-break: keep-all;
+    flex: 0 0 auto;
 }
 
 .hero-title .gradient-text {
@@ -325,7 +342,7 @@ p {
 
 @media (min-width: 768px) {
     .hero-title {
-        font-size: 3.75rem;
+        font-size: 2.8rem;
     }
 
     /* md:text-6xl */
@@ -1026,6 +1043,12 @@ p {
 
     :root {
         --caption-font-size: 0.875rem;
+    }
+
+    .hero-version-badge {
+        position: static;
+        display: inline-block;
+        margin-bottom: 0.8rem;
     }
 }
 
