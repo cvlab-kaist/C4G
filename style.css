@@ -38,7 +38,7 @@
     /* Layout */
     --container-width: 80rem;
     --header-height: 4rem;
-    --sidebar-width: 160px;
+    --sidebar-width: 184px;
 }
 
 /* Reset & Base */
@@ -284,20 +284,6 @@ p {
     /* max-w-5xl */
     margin: 0 auto 3rem auto;
     position: relative;
-}
-
-.hero-version-badge {
-    position: absolute;
-    top: -1.2rem;
-    right: 0;
-    padding: 0.35rem 0.7rem;
-    border-radius: 9999px;
-    background: rgba(13, 20, 38, 0.08);
-    border: 1px solid rgba(13, 20, 38, 0.18);
-    color: #0d1426;
-    font-size: 0.78rem;
-    font-weight: 600;
-    letter-spacing: 0.03em;
 }
 
 .hero-title {
