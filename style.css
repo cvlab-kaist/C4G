@@ -290,22 +290,13 @@ p {
     font-size: clamp(1.4rem, 2.6vw, 2.8rem);
     /* 4xl */
     font-weight: 700;
-    margin-bottom: 1rem;
+    margin: 0 auto 1rem;
     line-height: 1.25;
     text-align: center;
     color: #0d1426;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.2rem;
-}
-
-.hero-title-line {
-    display: inline-block;
-    white-space: nowrap;
-    overflow-wrap: normal;
-    word-break: keep-all;
-    flex: 0 0 auto;
+    max-width: min(100%, 34ch);
+    overflow-wrap: break-word;
+    word-break: normal;
 }
 
 .hero-title .gradient-text {
@@ -327,22 +318,6 @@ p {
 }
 
 
-@media (max-width: 767px) {
-    .hero-title {
-        display: block;
-    }
-
-    .hero-title-line {
-        display: inline;
-        white-space: normal;
-        overflow-wrap: anywhere;
-        word-break: normal;
-    }
-
-    .hero-title-line + .hero-title-line::before {
-        content: ' ';
-    }
-}
 
 @media (min-width: 768px) {
     .hero-title {
