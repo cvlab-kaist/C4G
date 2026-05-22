@@ -316,7 +316,9 @@ p {
 
 .hero-title-line {
     display: inline-block;
-    white-space: nowrap;
+    width: fit-content;
+    max-width: 100%;
+    text-align: center;
 }
 
 .hero-title .gradient-text {
