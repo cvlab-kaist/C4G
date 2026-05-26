@@ -1,0 +1,3 @@
+dynamicmask:
+  weight_static: 1.0
+  weight_dynamic: 3.0

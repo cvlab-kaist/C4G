@@ -1,0 +1,21 @@
+defaults:
+  - base_dataset
+  - view_sampler: uniform
+
+name: kubric
+roots: [/path/to/kubric]
+
+input_image_shape: [224, 224]
+original_image_shape: [512, 512]
+cameras_are_circular: false
+
+baseline_min: 1e-3
+baseline_max: 1e10
+max_fov: 100.0
+rescale_to_1cube: true
+num_temporal_frames: 32
+num_context_timestamps: 6
+render_config_include: [small_baseline]
+
+view_sampler:
+  warm_up_steps: 0

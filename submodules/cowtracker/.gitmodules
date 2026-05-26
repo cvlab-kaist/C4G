@@ -1,0 +1,6 @@
+[submodule "cowtracker/thirdparty/vggt"]
+	path = cowtracker/thirdparty/vggt
+	url = https://github.com/facebookresearch/vggt.git
+[submodule "cowtracker/thirdparty/DepthAnythingV2"]
+	path = cowtracker/thirdparty/DepthAnythingV2
+	url = https://github.com/DepthAnything/Depth-Anything-V2.git

@@ -1,0 +1,21 @@
+defaults:
+  - base_dataset
+  - view_sampler: uniform
+
+name: spring
+roots: [/path/to/Spring]
+mask_root: /path/to/spring_dynamic_masks
+
+input_image_shape: [224, 224]
+original_image_shape: [1080, 1920]
+cameras_are_circular: false
+
+baseline_min: 1e-3
+baseline_max: 1e10
+max_fov: 100.0
+make_baseline_1: true
+
+view_sampler:
+  warm_up_steps: 5000
+  initial_gap: 2
+  gap: 4

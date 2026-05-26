@@ -1,0 +1,8 @@
+name: uniform
+
+num_context_views: 10
+
+
+warm_up_steps: 5000
+initial_gap: 2
+gap: 6

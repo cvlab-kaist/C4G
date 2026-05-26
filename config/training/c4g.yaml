@@ -1,0 +1,60 @@
+# @package _global_
+
+defaults:
+  - /dataset@_group_.kubric: kubric
+  - /dataset@_group_.spring: spring
+  - /dataset@_group_.re10k: re10k
+  - override /model/encoder: vggt
+  - override /model/encoder/backbone: vggt_multi
+  - override /loss: [dynamicmask, lpips]
+
+wandb:
+  name: all_w_re10k
+  tags: [all, kubric, spring, re10k, vggt, dynamicmask, track]
+
+model:
+  encoder:
+    pretrained_weights: pretrained_weights/gaussian_decoder.ckpt
+
+dataset:
+  kubric:
+    view_sampler:
+      warm_up_steps: 37500
+  spring:
+    view_sampler:
+      num_context_views: 12
+      num_target_views: 11
+      gap: 2
+      initial_gap: 2
+      warm_up_steps: 37500
+    different_time: true
+    relative_time: false
+  re10k:
+    view_sampler:
+      num_context_views: 12
+      num_target_views: 11
+      warm_up_steps: 37500
+
+optimizer:
+  lr: 1e-5
+  warm_up_steps: 1000
+  backbone_lr_multiplier: 0.01
+
+data_loader:
+  train:
+    batch_size: 1
+
+train:
+  context_view_loss: true
+  reproj_model: moge
+  depth_loss: 1e-3
+  normal_loss: 1e-3
+  tracking_consistency_loss: 1e-1
+
+trainer:
+  max_steps: 20000
+  val_check_interval: 500
+  accumulate_grad_batches: 1
+
+checkpointing:
+  every_n_train_steps: 1000

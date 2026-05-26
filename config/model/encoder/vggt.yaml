@@ -1,0 +1,19 @@
+defaults:
+  - backbone: vggt_multi
+
+name: vggt
+
+opacity_mapping:
+  initial: 0.0
+  final: 0.0
+  warm_up: 1
+
+num_monocular_samples: 32
+
+gaussian_adapter:
+  gaussian_scale_min: 0.5
+  gaussian_scale_max: 15.0
+
+d_feature: 128
+
+pretrained_weights: ""
