@@ -890,12 +890,12 @@ p {
 
 .context-frame img {
     width: auto;
-    height: 252px;
+    height: 150px;
     display: block;
 }
 
 .davis-context-row .context-frame img {
-    height: 75px;
+    height: 100px;
 }
 
 @media (min-width: 1024px) {
