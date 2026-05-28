@@ -216,10 +216,70 @@
     ];
 
     const qualitativeData = [
-      { title: "Video Results (Including In-between Keyframe Prediction)", desc: "Qualitative video result on DAVIS scene: boat.", video: "./assets/boat_wan.mp4" },
-      { title: "Video Results (Including In-between Keyframe Prediction)", desc: "Qualitative video result on DAVIS scene: camel.", video: "./assets/camel_wan.mp4" },
-      { title: "Video Results (Including In-between Keyframe Prediction)", desc: "Qualitative video result on DAVIS scene: planes-water.", video: "./assets/planes-water_wan.mp4" },
-      { title: "Video Results (Including In-between Keyframe Prediction)", desc: "Qualitative video result on DAVIS scene: gold-fish.", video: "./assets/gold-fish_wan.mp4" },
+      // { title: "Video Results (Including In-between Keyframe Prediction)", desc: "Qualitative video result on DAVIS scene: boat.", video: "./assets/boat_wan.mp4" },
+      // { title: "Video Results (Including In-between Keyframe Prediction)", desc: "Qualitative video result on DAVIS scene: camel.", video: "./assets/camel_wan.mp4" },
+      // { title: "Video Results (Including In-between Keyframe Prediction)", desc: "Qualitative video result on DAVIS scene: planes-water.", video: "./assets/planes-water_wan.mp4" },
+      // { title: "Video Results (Including In-between Keyframe Prediction)", desc: "Qualitative video result on DAVIS scene: gold-fish.", video: "./assets/gold-fish_wan.mp4" },
+      {
+        title: "Video Results (Including In-between Keyframe Prediction)",
+        desc: "Qualitative video result on DAVIS scene: bear.",
+        layout: "dualVideoWithContext",
+        videos: [
+          "./assets/davis/bear/bear_nvs_1.mp4",
+          "./assets/davis/bear/bear_nvs_2.mp4"
+        ],
+        contextImages: [
+          "./assets/davis/bear/context_frames/context_frac_0_n0000.png",
+          "./assets/davis/bear/context_frames/context_frac_1_n0003.png",
+          "./assets/davis/bear/context_frames/context_frac_2_n0007.png",
+          "./assets/davis/bear/context_frames/context_frac_3_n0011.png"
+        ]
+      },
+      {
+        title: "Video Results (Including In-between Keyframe Prediction)",
+        desc: "Qualitative video result on DAVIS scene: camel.",
+        layout: "dualVideoWithContext",
+        videos: [
+          "./assets/davis/camel/camel_nvs_1.mp4",
+          "./assets/davis/camel/camel_nvs_2.mp4"
+        ],
+        contextImages: [
+          "./assets/davis/camel/context_frames/context_frac_0_n0000.png",
+          "./assets/davis/camel/context_frames/context_frac_1_n0003.png",
+          "./assets/davis/camel/context_frames/context_frac_2_n0007.png",
+          "./assets/davis/camel/context_frames/context_frac_3_n0011.png"
+        ]
+      },
+      {
+        title: "Video Results (Including In-between Keyframe Prediction)",
+        desc: "Qualitative video result on DAVIS scene: plane.",
+        layout: "dualVideoWithContext",
+        videos: [
+          "./assets/davis/plane/plane_nvs_1.mp4",
+          "./assets/davis/plane/plane_nvs_2.mp4"
+        ],
+        contextImages: [
+          "./assets/davis/plane/context_frames/context_frac_0_n0000.png",
+          "./assets/davis/plane/context_frames/context_frac_1_n0003.png",
+          "./assets/davis/plane/context_frames/context_frac_2_n0007.png",
+          "./assets/davis/plane/context_frames/context_frac_3_n0011.png"
+        ]
+      },
+      {
+        title: "Video Results (Including In-between Keyframe Prediction)",
+        desc: "Qualitative video result on DAVIS scene: gold-fish.",
+        layout: "dualVideoWithContext",
+        videos: [
+          "./assets/davis/gold-fish/gold-fish_nvs_1.mp4",
+          "./assets/davis/gold-fish/gold-fish_nvs_2.mp4"
+        ],
+        contextImages: [
+          "./assets/davis/gold-fish/context_frames/context_frac_0_n0000.png",
+          "./assets/davis/gold-fish/context_frames/context_frac_1_n0003.png",
+          "./assets/davis/gold-fish/context_frames/context_frac_2_n0007.png",
+          "./assets/davis/gold-fish/context_frames/context_frac_3_n0011.png"
+        ]
+      },
       {
         title: "Video Results (Including In-between Keyframe Prediction)",
         desc: "Qualitative video result on iPhone scene: windmill.",
@@ -283,7 +343,7 @@
         ).join("");
         const contextFrames = item.contextImages.map((imagePath, idx) =>
           `<div class="context-frame" aria-label="Context frame ${idx + 1}">
-            <img src="${imagePath}" alt="Windmill context frame ${idx + 1}" width="224" height="224">
+            <img src="${imagePath}" alt="Context frame ${idx + 1}" width="224" height="224">
           </div>`
         ).join("");
         return `<div class="results-slide-content"><h3 class="results-slide-title">${item.title}</h3><div class="dual-video-grid">${videos}</div><div class="context-frame-row">${contextFrames}</div><p class="media-caption context-caption">context view images</p><div class="results-caption"><p>${item.desc}</p></div></div>`;
