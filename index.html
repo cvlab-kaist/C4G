@@ -350,7 +350,8 @@
             <img src="${imagePath}" alt="Context frame ${idx + 1}">
           </div>`
         ).join("");
-        return `<div class="results-slide-content"><h3 class="results-slide-title">${item.title}</h3><div class="dual-video-grid">${videos}</div><div class="context-frame-row">${contextFrames}</div><p class="media-caption context-caption">context view images</p><div class="results-caption"><p>${item.desc}</p></div></div>`;
+        const contextRowClass = item.desc.includes("DAVIS scene") ? "context-frame-row davis-context-row" : "context-frame-row";
+        return `<div class="results-slide-content"><h3 class="results-slide-title">${item.title}</h3><div class="dual-video-grid">${videos}</div><div class="${contextRowClass}">${contextFrames}</div><p class="media-caption context-caption">context view images</p><div class="results-caption"><p>${item.desc}</p></div></div>`;
       }
       const isVideo = !!item.video;
       const media = isVideo
