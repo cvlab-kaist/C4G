@@ -861,7 +861,7 @@ p {
 .media-caption {
     margin: 0.5rem 0 0 0;
     text-align: center;
-    font-size: 3.8rem;
+    font-size: 1.2667rem;
     color: var(--color-text-muted);
     font-weight: 600;
     text-transform: lowercase;

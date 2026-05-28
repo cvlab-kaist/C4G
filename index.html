@@ -172,11 +172,11 @@
         title: "Table 1: Novel View Synthesis on Dynamic Datasets",
         desc: "Our method achieves the strongest overall performance among pose-free methods with dramatically fewer Gaussians (2K).",
         table: `<table class="quant-table"><thead><tr><th>Method</th><th>Per-scene</th><th>Pose</th><th>#G</th><th>DyCheck PSNR/SSIM/LPIPS</th><th>ADT PSNR/SSIM/LPIPS</th><th>TUM-Dynamics PSNR/SSIM/LPIPS</th><th>NVIDIA PSNR/SSIM/LPIPS</th></tr></thead><tbody>
-          <tr><td>Shape of Motion [82]</td><td>✓</td><td>✓</td><td><u>128K</u></td><td><u>14.13</u> / 0.313 / 0.690</td><td>- / - / -</td><td>14.29 / 0.453 / 0.552</td><td>10.86 / 0.280 / 0.791</td></tr>
-          <tr><td>MoSca [40]</td><td>✓</td><td>✓</td><td>342K</td><td>11.93 / 0.252 / 0.700</td><td>2.419 / 0.343 / 0.892</td><td>9.765 / 0.247 / 0.654</td><td>12.62 / 0.269 / 0.691</td></tr>
-          <tr><td>4DGT [91]</td><td>✗</td><td>✓</td><td>272K</td><td>12.15 / 0.247 / 0.477</td><td>19.22 / <strong>0.717</strong> / <strong>0.260</strong></td><td><u>17.27</u> / <u>0.578</u> / <u>0.329</u></td><td>15.64 / <u>0.349</u> / 0.614</td></tr>
-          <tr><td>MoVieS [48]</td><td>✗</td><td>✓</td><td>802K</td><td>11.99 / <u>0.352</u> / <strong>0.359</strong></td><td><u>20.35</u> / 0.526 / 0.394</td><td>14.91 / 0.378 / 0.395</td><td>13.71 / 0.211 / 0.596</td></tr>
-          <tr><td>NeoVerse [93]</td><td>✗</td><td>✗</td><td>802K</td><td>11.90 / 0.251 / 0.450</td><td>21.94 / 0.629 / <u>0.270</u></td><td>15.26 / 0.437 / 0.415</td><td><u>15.86</u> / 0.322 / <u>0.492</u></td></tr>
+          <tr><td>Shape of Motion </td><td>✓</td><td>✓</td><td><u>128K</u></td><td><u>14.13</u> / 0.313 / 0.690</td><td>- / - / -</td><td>14.29 / 0.453 / 0.552</td><td>10.86 / 0.280 / 0.791</td></tr>
+          <tr><td>MoSca </td><td>✓</td><td>✓</td><td>342K</td><td>11.93 / 0.252 / 0.700</td><td>2.419 / 0.343 / 0.892</td><td>9.765 / 0.247 / 0.654</td><td>12.62 / 0.269 / 0.691</td></tr>
+          <tr><td>4DGT </td><td>✗</td><td>✓</td><td>272K</td><td>12.15 / 0.247 / 0.477</td><td>19.22 / <strong>0.717</strong> / <strong>0.260</strong></td><td><u>17.27</u> / <u>0.578</u> / <u>0.329</u></td><td>15.64 / <u>0.349</u> / 0.614</td></tr>
+          <tr><td>MoVieS </td><td>✗</td><td>✓</td><td>802K</td><td>11.99 / <u>0.352</u> / <strong>0.359</strong></td><td><u>20.35</u> / 0.526 / 0.394</td><td>14.91 / 0.378 / 0.395</td><td>13.71 / 0.211 / 0.596</td></tr>
+          <tr><td>NeoVerse </td><td>✗</td><td>✗</td><td>802K</td><td>11.90 / 0.251 / 0.450</td><td>21.94 / 0.629 / <u>0.270</u></td><td>15.26 / 0.437 / 0.415</td><td><u>15.86</u> / 0.322 / <u>0.492</u></td></tr>
           <tr><td><strong>Ours</strong></td><td>✗</td><td>✗</td><td><strong>2K</strong></td><td><strong>15.64</strong> / <strong>0.388</strong> / <u>0.384</u></td><td><strong>22.35</strong> / <u>0.631</u> / 0.313</td><td><strong>19.52</strong> / <strong>0.603</strong> / <strong>0.306</strong></td><td><strong>20.51</strong> / <strong>0.489</strong> / <strong>0.393</strong></td></tr>
         </tbody></table>`
       },
@@ -184,9 +184,9 @@
         title: "Table 2: Temporal Gap Robustness on TUM-Dynamics",
         desc: "Our method degrades less as temporal interval Δt increases.",
         table: `<table class="quant-table"><thead><tr><th>Method</th><th>Pose</th><th>Δt=2</th><th>Δt=4</th><th>Δt=6</th><th>Δt=8</th></tr></thead><tbody>
-          <tr><td>4DGT [91]</td><td>✓</td><td>19.27 / <strong>0.674</strong> / <u>0.251</u></td><td>18.08 / <strong>0.623</strong> / 0.297</td><td><u>17.27</u> / <u>0.578</u> / <u>0.329</u></td><td><u>16.27</u> / <u>0.547</u> / <u>0.351</u></td></tr>
-          <tr><td>MoVieS [48]</td><td>✓</td><td>16.30 / 0.441 / 0.314</td><td>15.93 / 0.432 / 0.334</td><td>14.91 / 0.378 / 0.395</td><td>14.23 / 0.322 / 0.428</td></tr>
-          <tr><td>NeoVerse [93]</td><td>✗</td><td><u>20.14</u> / <u>0.671</u> / <strong>0.216</strong></td><td><u>18.23</u> / 0.575 / <u>0.296</u></td><td>15.26 / 0.437 / 0.415</td><td>15.94 / 0.475 / 0.387</td></tr>
+          <tr><td>4DGT </td><td>✓</td><td>19.27 / <strong>0.674</strong> / <u>0.251</u></td><td>18.08 / <strong>0.623</strong> / 0.297</td><td><u>17.27</u> / <u>0.578</u> / <u>0.329</u></td><td><u>16.27</u> / <u>0.547</u> / <u>0.351</u></td></tr>
+          <tr><td>MoVieS </td><td>✓</td><td>16.30 / 0.441 / 0.314</td><td>15.93 / 0.432 / 0.334</td><td>14.91 / 0.378 / 0.395</td><td>14.23 / 0.322 / 0.428</td></tr>
+          <tr><td>NeoVerse </td><td>✗</td><td><u>20.14</u> / <u>0.671</u> / <strong>0.216</strong></td><td><u>18.23</u> / 0.575 / <u>0.296</u></td><td>15.26 / 0.437 / 0.415</td><td>15.94 / 0.475 / 0.387</td></tr>
           <tr><td><strong>Ours</strong></td><td>✗</td><td><strong>20.59</strong> / 0.647 / 0.267</td><td><strong>20.00</strong> / <u>0.619</u> / <strong>0.290</strong></td><td><strong>19.52</strong> / <strong>0.603</strong> / <strong>0.306</strong></td><td><strong>19.23</strong> / <strong>0.599</strong> / <strong>0.311</strong></td></tr>
         </tbody></table>`
       },
@@ -194,22 +194,22 @@
         title: "Table 3: Temporal-Invariant Feature",
         desc: "Feature lifting from our framework improves temporal consistency for both DINOv3-L and VGGT-Tracking features.",
         table: `<table class="quant-table"><thead>
-          <tr><th rowspan="2">Method</th><th colspan="4">RGB-stacking [38,12]</th><th colspan="4">DAVIS [65,12]</th></tr>
+          <tr><th rowspan="2">Method</th><th colspan="4">RGB-stacking [38,12]</th><th colspan="4">DAVIS</th></tr>
           <tr><th>&lt;δ0</th><th>&lt;δ2</th><th>&lt;δ4</th><th>δavg</th><th>&lt;δ0</th><th>&lt;δ2</th><th>&lt;δ4</th><th>δavg</th></tr>
           </thead><tbody>
-          <tr><td>DINOv3-L [73]</td><td>1.3</td><td>11.3</td><td>65.6</td><td>23.2</td><td>0.6</td><td>6.2</td><td>40.7</td><td>13.7</td></tr>
-          <tr><td>DINOv3-L [73] + Ours</td><td><strong>6.9</strong></td><td><strong>38.3</strong></td><td><strong>74.4</strong></td><td><strong>39.3</strong></td><td>2.2</td><td>19.8</td><td>63.1</td><td>27.1</td></tr>
-          <tr><td>VGGT-Tracking [81]</td><td>1.1</td><td>15.9</td><td>63.6</td><td>24.8</td><td>2.7</td><td>17.9</td><td>54.0</td><td>23.1</td></tr>
-          <tr><td>VGGT-Tracking [81] + Ours</td><td><u>4.9</u></td><td><u>28.7</u></td><td><u>68.0</u></td><td><u>33.0</u></td><td><strong>4.4</strong></td><td><strong>23.4</strong></td><td><strong>68.7</strong></td><td><strong>30.5</strong></td></tr>
+          <tr><td>DINOv3-L </td><td>1.3</td><td>11.3</td><td>65.6</td><td>23.2</td><td>0.6</td><td>6.2</td><td>40.7</td><td>13.7</td></tr>
+          <tr><td>DINOv3-L  + Ours</td><td><strong>6.9</strong></td><td><strong>38.3</strong></td><td><strong>74.4</strong></td><td><strong>39.3</strong></td><td>2.2</td><td>19.8</td><td>63.1</td><td>27.1</td></tr>
+          <tr><td>VGGT-Tracking </td><td>1.1</td><td>15.9</td><td>63.6</td><td>24.8</td><td>2.7</td><td>17.9</td><td>54.0</td><td>23.1</td></tr>
+          <tr><td>VGGT-Tracking  + Ours</td><td><u>4.9</u></td><td><u>28.7</u></td><td><u>68.0</u></td><td><u>33.0</u></td><td><strong>4.4</strong></td><td><strong>23.4</strong></td><td><strong>68.7</strong></td><td><strong>30.5</strong></td></tr>
         </tbody></table>`
       },
       {
         title: "Table 4: Dynamic Scene Understanding (DAVIS)",
         desc: "Our framework lifts semantics into 4D and outperforms prior feed-forward methods.",
         table: `<table class="quant-table"><thead><tr><th>Method</th><th>mIoU</th><th>Acc</th><th>PSNR</th><th>SSIM</th><th>LPIPS</th></tr></thead><tbody>
-          <tr><td>LSeg [42]</td><td>0.550</td><td>0.801</td><td>-</td><td>-</td><td>-</td></tr>
-          <tr><td>LSM [14]</td><td><u>0.615</u></td><td><u>0.844</u></td><td>14.320</td><td>0.310</td><td>0.517</td></tr>
-          <tr><td>C3G [1]</td><td>0.345</td><td>0.528</td><td><u>18.623</u></td><td><u>0.376</u></td><td><u>0.460</u></td></tr>
+          <tr><td>LSeg </td><td>0.550</td><td>0.801</td><td>-</td><td>-</td><td>-</td></tr>
+          <tr><td>LSM </td><td><u>0.615</u></td><td><u>0.844</u></td><td>14.320</td><td>0.310</td><td>0.517</td></tr>
+          <tr><td>C3G </td><td>0.345</td><td>0.528</td><td><u>18.623</u></td><td><u>0.376</u></td><td><u>0.460</u></td></tr>
           <tr><td><strong>Ours</strong></td><td><strong>0.634</strong></td><td><strong>0.854</strong></td><td><strong>20.181</strong></td><td><strong>0.426</strong></td><td><strong>0.359</strong></td></tr>
         </tbody></table>`
       }
@@ -222,7 +222,7 @@
       { title: "Video Results (Including In-between Keyframe Prediction)", desc: "Qualitative video result on DAVIS scene: gold-fish.", video: "./assets/gold-fish_wan.mp4" },
       {
         title: "Video Results (Including In-between Keyframe Prediction)",
-        desc: "Qualitative video result on iPhone scene: windmill (two 60-frame view videos with context frames).",
+        desc: "Qualitative video result on iPhone scene: windmill.",
         layout: "dualVideoWithContext",
         videos: [
           "./assets/iphone/windmill/iphone_windmill_view0_60_fps5.mp4",
@@ -230,9 +230,39 @@
         ],
         contextImages: [
           "./assets/iphone/windmill/context/context_t0000_cam02.png",
-          "./assets/iphone/windmill/context/context_t0010_cam02.png",
           "./assets/iphone/windmill/context/context_t0020_cam02.png",
-          "./assets/iphone/windmill/context/context_t0030_cam02.png"
+          "./assets/iphone/windmill/context/context_t0040_cam02.png",
+          "./assets/iphone/windmill/context/context_t0060_cam02.png"
+        ]
+      },
+      {
+        title: "Video Results (Including In-between Keyframe Prediction)",
+        desc: "Qualitative video result on iPhone scene: teddy.",
+        layout: "dualVideoWithContext",
+        videos: [
+          "./assets/iphone/teddybear/iphone_bear_view0.mp4",
+          "./assets/iphone/teddybear/iphone_bear_view1.mp4",
+        ],
+        contextImages: [
+          "./assets/iphone/teddybear/context/context_t0000_cam02.png",
+          "./assets/iphone/teddybear/context/context_t0022_cam02.png",
+          "./assets/iphone/teddybear/context/context_t0042_cam02.png",
+          "./assets/iphone/teddybear/context/context_t0062_cam02.png"
+        ]
+      },
+      {
+        title: "Video Results (Including In-between Keyframe Prediction)",
+        desc: "Qualitative video result on iPhone scene: block.",
+        layout: "dualVideoWithContext",
+        videos: [
+          "./assets/iphone/block/iphone_block_view0.mp4",
+          "./assets/iphone/block/iphone_block_view1.mp4"
+        ],
+        contextImages: [
+          "./assets/iphone/block/context/context_t0000_cam02.png",
+          "./assets/iphone/block/context/context_t0012_cam02.png",
+          "./assets/iphone/block/context/context_t0032_cam02.png",
+          "./assets/iphone/block/context/context_t0062_cam02.png"
         ]
       }
     ];
