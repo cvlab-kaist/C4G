@@ -840,7 +840,7 @@ p {
 }
 
 .dual-video-grid {
-    width: min(100%, 980px);
+    width: min(100%, 735px);
     margin: 0 auto;
     display: grid;
     grid-template-columns: 1fr;
@@ -861,7 +861,7 @@ p {
 .media-caption {
     margin: 0.5rem 0 0 0;
     text-align: center;
-    font-size: 0.95rem;
+    font-size: 3.8rem;
     color: var(--color-text-muted);
     font-weight: 600;
     text-transform: lowercase;
@@ -872,7 +872,7 @@ p {
 }
 
 .context-frame-row {
-    width: min(100%, 1180px);
+    width: min(100%, 885px);
     margin: 1rem auto 0 auto;
     display: flex;
     gap: 0.75rem;
@@ -881,9 +881,9 @@ p {
 }
 
 .context-frame {
-    flex: 0 0 224px;
-    width: 224px;
-    height: 224px;
+    flex: 0 0 168px;
+    width: 168px;
+    height: 168px;
     border: 1px solid var(--color-primary);
     border-radius: 0.5rem;
     overflow: hidden;
