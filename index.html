@@ -100,12 +100,8 @@
         <div id="carousel-quan" class="carousel-container"></div>
       </div>
       <div class="results-block">
-        <h2 class="section-title">Qualitative Results (DAVIS)</h2>
-        <div id="carousel-qual-davis" class="carousel-container"></div>
-      </div>
-      <div class="results-block">
-        <h2 class="section-title">Qualitative Results (iPhone)</h2>
-        <div id="carousel-qual-iphone" class="carousel-container"></div>
+        <h2 class="section-title">Qualitative Results</h2>
+        <div id="carousel-qual" class="carousel-container"></div>
       </div>
     </div>
   </section>
@@ -138,6 +134,10 @@
         this.init();
       }
       init() {
+        if (!this.totalSlides) {
+          this.container.innerHTML = `<div class="results-caption"><p>No video results available.</p></div>`;
+          return;
+        }
         this.container.innerHTML = `
           <div class="carousel-viewport"><div class="carousel-track">${this.data.map(item => `<div class="carousel-slide">${this.renderItem(item)}</div>`).join('')}</div></div>
           <button class="carousel-nav-btn prev"><i class="fa-solid fa-chevron-left"></i></button>
@@ -220,43 +220,9 @@
     ];
 
     const qualitativeAllData = [
-      // { title: "Video Results (Including In-between Keyframe Prediction)", desc: "Qualitative video result on DAVIS scene: boat.", video: "./assets/boat_wan.mp4" },
-      // { title: "Video Results (Including In-between Keyframe Prediction)", desc: "Qualitative video result on DAVIS scene: camel.", video: "./assets/camel_wan.mp4" },
-      // { title: "Video Results (Including In-between Keyframe Prediction)", desc: "Qualitative video result on DAVIS scene: planes-water.", video: "./assets/planes-water_wan.mp4" },
-      // { title: "Video Results (Including In-between Keyframe Prediction)", desc: "Qualitative video result on DAVIS scene: gold-fish.", video: "./assets/gold-fish_wan.mp4" },
       {
-        title: "Video Results (Including In-between Keyframe Prediction)",
-        desc: "Qualitative video result on DAVIS scene: bear.",
-        layout: "dualVideoWithContext",
-        videos: [
-          "./assets/davis/bear/bear_nvs_1.mp4",
-          "./assets/davis/bear/bear_nvs_2.mp4"
-        ],
-        contextImages: [
-          "./assets/davis/bear/context_frames/context_frac_0_n0000.png",
-          "./assets/davis/bear/context_frames/context_frac_1_n0003.png",
-          "./assets/davis/bear/context_frames/context_frac_2_n0007.png",
-          "./assets/davis/bear/context_frames/context_frac_3_n0011.png"
-        ]
-      },
-      {
-        title: "Video Results (Including In-between Keyframe Prediction)",
-        desc: "Qualitative video result on DAVIS scene: camel.",
-        layout: "dualVideoWithContext",
-        videos: [
-          "./assets/davis/camel/camel_nvs_1.mp4",
-          "./assets/davis/camel/camel_nvs_2.mp4"
-        ],
-        contextImages: [
-          "./assets/davis/camel/context_frames/context_frac_0_n0000.png",
-          "./assets/davis/camel/context_frames/context_frac_1_n0003.png",
-          "./assets/davis/camel/context_frames/context_frac_2_n0007.png",
-          "./assets/davis/camel/context_frames/context_frac_3_n0011.png"
-        ]
-      },
-      {
-        title: "Video Results (Including In-between Keyframe Prediction)",
-        desc: "Qualitative video result on DAVIS scene: plane.",
+        title: "",
+        desc: "Qualitative video result on <strong style='color:#2563eb;'>DAVIS</strong> scene: plane. (Including In-between Keyframe Prediction)",
         layout: "dualVideoWithContext",
         videos: [
           "./assets/davis/plane/plane_nvs_1.mp4",
@@ -270,8 +236,38 @@
         ]
       },
       {
-        title: "Video Results (Including In-between Keyframe Prediction)",
-        desc: "Qualitative video result on DAVIS scene: gold-fish.",
+        title: "",
+        desc: "Qualitative video result on <strong style='color:#2563eb;'>DAVIS</strong> scene: bear. (Including In-between Keyframe Prediction)",
+        layout: "dualVideoWithContext",
+        videos: [
+          "./assets/davis/bear/bear_nvs_1.mp4",
+          "./assets/davis/bear/bear_nvs_2.mp4"
+        ],
+        contextImages: [
+          "./assets/davis/bear/context_frames/context_frac_0_n0000.png",
+          "./assets/davis/bear/context_frames/context_frac_1_n0003.png",
+          "./assets/davis/bear/context_frames/context_frac_2_n0007.png",
+          "./assets/davis/bear/context_frames/context_frac_3_n0011.png"
+        ]
+      },
+      {
+        title: "",
+        desc: "Qualitative video result on <strong style='color:#2563eb;'>DAVIS</strong> scene: camel. (Including In-between Keyframe Prediction)",
+        layout: "dualVideoWithContext",
+        videos: [
+          "./assets/davis/camel/camel_nvs_1.mp4",
+          "./assets/davis/camel/camel_nvs_2.mp4"
+        ],
+        contextImages: [
+          "./assets/davis/camel/context_frames/context_frac_0_n0000.png",
+          "./assets/davis/camel/context_frames/context_frac_1_n0003.png",
+          "./assets/davis/camel/context_frames/context_frac_2_n0007.png",
+          "./assets/davis/camel/context_frames/context_frac_3_n0011.png"
+        ]
+      },
+      {
+        title: "",
+        desc: "Qualitative video result on <strong style='color:#2563eb;'>DAVIS</strong> scene: gold-fish. (Including In-between Keyframe Prediction)",
         layout: "dualVideoWithContext",
         videos: [
           "./assets/davis/gold-fish/gold-fish_nvs_1.mp4",
@@ -285,8 +281,8 @@
         ]
       },
       {
-        title: "Video Results (Including In-between Keyframe Prediction)",
-        desc: "Qualitative video result on iPhone scene: windmill.",
+        title: "",
+        desc: "Qualitative video result on <strong style='color:#7c3aed;'>iPhone</strong> scene: windmill. (Including In-between Keyframe Prediction)",
         layout: "dualVideoWithContext",
         videos: [
           "./assets/iphone/windmill/iphone_windmill_view0_60_fps5.mp4",
@@ -300,33 +296,18 @@
         ]
       },
       {
-        title: "Video Results (Including In-between Keyframe Prediction)",
-        desc: "Qualitative video result on iPhone scene: teddy.",
+        title: "",
+        desc: "Qualitative video result on <strong style='color:#7c3aed;'>iPhone</strong> scene: teddy. (Including In-between Keyframe Prediction)",
         layout: "dualVideoWithContext",
         videos: [
           "./assets/iphone/teddybear/iphone_bear_view0.mp4",
-          "./assets/iphone/teddybear/iphone_bear_view1.mp4",
+          "./assets/iphone/teddybear/iphone_bear_view1.mp4"
         ],
         contextImages: [
           "./assets/iphone/teddybear/context/context_t0000_cam02.png",
           "./assets/iphone/teddybear/context/context_t0022_cam02.png",
           "./assets/iphone/teddybear/context/context_t0042_cam02.png",
           "./assets/iphone/teddybear/context/context_t0062_cam02.png"
-        ]
-      },
-      {
-        title: "Video Results (Including In-between Keyframe Prediction)",
-        desc: "Qualitative video result on iPhone scene: block.",
-        layout: "dualVideoWithContext",
-        videos: [
-          "./assets/iphone/block/iphone_block_view0.mp4",
-          "./assets/iphone/block/iphone_block_view1.mp4"
-        ],
-        contextImages: [
-          "./assets/iphone/block/context/context_t0000_cam02.png",
-          "./assets/iphone/block/context/context_t0012_cam02.png",
-          "./assets/iphone/block/context/context_t0032_cam02.png",
-          "./assets/iphone/block/context/context_t0062_cam02.png"
         ]
       }
     ];
@@ -350,8 +331,9 @@
             <img src="${imagePath}" alt="Context frame ${idx + 1}">
           </div>`
         ).join("");
-        const contextRowClass = item.desc.includes("DAVIS scene") ? "context-frame-row davis-context-row" : "context-frame-row";
-        return `<div class="results-slide-content"><h3 class="results-slide-title">${item.title}</h3><div class="dual-video-grid">${videos}</div><div class="${contextRowClass}">${contextFrames}</div><p class="media-caption context-caption">context view images</p><div class="results-caption"><p>${item.desc}</p></div></div>`;
+        const contextRowClass = item.desc.includes("DAVIS") ? "context-frame-row davis-context-row" : "context-frame-row";
+        const titleHtml = item.title ? `<h3 class="results-slide-title">${item.title}</h3>` : "";
+        return `<div class="results-slide-content">${titleHtml}<div class="dual-video-grid">${videos}</div><div class="${contextRowClass}">${contextFrames}</div><p class="media-caption context-caption">context view images</p><div class="results-caption"><p>${item.desc}</p></div></div>`;
       }
       const isVideo = !!item.video;
       const media = isVideo
@@ -394,10 +376,10 @@
 
     document.addEventListener('DOMContentLoaded', () => {
       new Carousel('carousel-quan', quantitativeData, renderQuantitative);
-      const qualitativeDavisData = qualitativeAllData.filter((item) => item.desc.includes('DAVIS scene'));
-      const qualitativeIphoneData = qualitativeAllData.filter((item) => item.desc.includes('iPhone scene'));
-      new Carousel('carousel-qual-davis', qualitativeDavisData, renderImageCard);
-      new Carousel('carousel-qual-iphone', qualitativeIphoneData, renderImageCard);
+      const qualitativeDavisData = qualitativeAllData.filter((item) => item.desc.includes('DAVIS'));
+      const qualitativeIphoneData = qualitativeAllData.filter((item) => item.desc.includes('iPhone'));
+      const qualitativeOrderedData = [...qualitativeIphoneData, ...qualitativeDavisData];
+      new Carousel('carousel-qual', qualitativeOrderedData, renderImageCard);
       initScrollSpy();
     });
   </script>
