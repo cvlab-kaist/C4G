@@ -225,15 +225,14 @@
         desc: "Qualitative video result on iPhone scene: windmill (two 60-frame view videos with context frames).",
         layout: "dualVideoWithContext",
         videos: [
-          "./assets/iphone/windmill/iphone_windmill_view0_60.mp4",
-          "./assets/iphone/windmill/iphone_windmill_view1_60.mp4"
+          "./assets/iphone/windmill/iphone_windmill_view0_60_fps5.mp4",
+          "./assets/iphone/windmill/iphone_windmill_view1_60_fps5.mp4"
         ],
         contextImages: [
           "./assets/iphone/windmill/context/context_t0000_cam02.png",
-          "./assets/iphone/windmill/context/context_t0002_cam02.png",
-          "./assets/iphone/windmill/context/context_t0004_cam02.png",
-          "./assets/iphone/windmill/context/context_t0006_cam02.png",
-          "./assets/iphone/windmill/context/context_t0008_cam02.png"
+          "./assets/iphone/windmill/context/context_t0010_cam02.png",
+          "./assets/iphone/windmill/context/context_t0020_cam02.png",
+          "./assets/iphone/windmill/context/context_t0030_cam02.png"
         ]
       }
     ];
@@ -243,12 +242,13 @@
     }
     function renderImageCard(item) {
       if (item.layout === "dualVideoWithContext") {
-        const videos = item.videos.map((videoPath) =>
+        const videos = item.videos.map((videoPath, idx) =>
           `<div class="analysis-image-container dual-video-item">
             <video controls autoplay loop muted playsinline preload="metadata" class="analysis-image dual-video-media">
               <source src="${videoPath}" type="video/mp4">
               Your browser does not support the video tag.
             </video>
+            <p class="media-caption">novel view ${idx + 1}</p>
           </div>`
         ).join("");
         const contextFrames = item.contextImages.map((imagePath, idx) =>
@@ -256,7 +256,7 @@
             <img src="${imagePath}" alt="Windmill context frame ${idx + 1}" width="224" height="224">
           </div>`
         ).join("");
-        return `<div class="results-slide-content"><h3 class="results-slide-title">${item.title}</h3><div class="dual-video-grid">${videos}</div><div class="context-frame-row">${contextFrames}</div><div class="results-caption"><p>${item.desc}</p></div></div>`;
+        return `<div class="results-slide-content"><h3 class="results-slide-title">${item.title}</h3><div class="dual-video-grid">${videos}</div><div class="context-frame-row">${contextFrames}</div><p class="media-caption context-caption">context view images</p><div class="results-caption"><p>${item.desc}</p></div></div>`;
       }
       const isVideo = !!item.video;
       const media = isVideo
