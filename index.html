@@ -343,7 +343,7 @@
         ).join("");
         const contextFrames = item.contextImages.map((imagePath, idx) =>
           `<div class="context-frame" aria-label="Context frame ${idx + 1}">
-            <img src="${imagePath}" alt="Context frame ${idx + 1}" width="224" height="224">
+            <img src="${imagePath}" alt="Context frame ${idx + 1}">
           </div>`
         ).join("");
         return `<div class="results-slide-content"><h3 class="results-slide-title">${item.title}</h3><div class="dual-video-grid">${videos}</div><div class="context-frame-row">${contextFrames}</div><p class="media-caption context-caption">context view images</p><div class="results-caption"><p>${item.desc}</p></div></div>`;
