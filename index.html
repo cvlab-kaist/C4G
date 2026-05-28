@@ -100,8 +100,12 @@
         <div id="carousel-quan" class="carousel-container"></div>
       </div>
       <div class="results-block">
-        <h2 class="section-title">Qualitative Results</h2>
-        <div id="carousel-qual" class="carousel-container"></div>
+        <h2 class="section-title">Qualitative Results (DAVIS)</h2>
+        <div id="carousel-qual-davis" class="carousel-container"></div>
+      </div>
+      <div class="results-block">
+        <h2 class="section-title">Qualitative Results (iPhone)</h2>
+        <div id="carousel-qual-iphone" class="carousel-container"></div>
       </div>
     </div>
   </section>
@@ -215,7 +219,7 @@
       }
     ];
 
-    const qualitativeData = [
+    const qualitativeAllData = [
       // { title: "Video Results (Including In-between Keyframe Prediction)", desc: "Qualitative video result on DAVIS scene: boat.", video: "./assets/boat_wan.mp4" },
       // { title: "Video Results (Including In-between Keyframe Prediction)", desc: "Qualitative video result on DAVIS scene: camel.", video: "./assets/camel_wan.mp4" },
       // { title: "Video Results (Including In-between Keyframe Prediction)", desc: "Qualitative video result on DAVIS scene: planes-water.", video: "./assets/planes-water_wan.mp4" },
@@ -389,7 +393,10 @@
 
     document.addEventListener('DOMContentLoaded', () => {
       new Carousel('carousel-quan', quantitativeData, renderQuantitative);
-      new Carousel('carousel-qual', qualitativeData, renderImageCard);
+      const qualitativeDavisData = qualitativeAllData.filter((item) => item.desc.includes('DAVIS scene'));
+      const qualitativeIphoneData = qualitativeAllData.filter((item) => item.desc.includes('iPhone scene'));
+      new Carousel('carousel-qual-davis', qualitativeDavisData, renderImageCard);
+      new Carousel('carousel-qual-iphone', qualitativeIphoneData, renderImageCard);
       initScrollSpy();
     });
   </script>
