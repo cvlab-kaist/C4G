@@ -1132,3 +1132,135 @@ p {
     color: var(--color-primary);
     font-weight: 800;
 }
+
+.timestamp-viewer {
+    width: 100%;
+}
+
+.timestamp-slider-wrap {
+    width: min(100%, 1080px);
+    margin: 0 auto 1.25rem auto;
+    position: relative;
+    padding-top: 1.9rem;
+}
+
+.timestamp-slider-label {
+    display: block;
+    margin-bottom: 1.8rem;
+    font-size: 1rem;
+    color: var(--color-text-muted);
+    font-weight: 600;
+}
+
+.bullet-time-red {
+    color: #dc2626;
+    font-weight: 700;
+}
+
+.timestamp-slider {
+    width: 100%;
+    accent-color: #3b82f6;
+}
+
+.timestamp-badge {
+    position: absolute;
+    top: auto;
+    bottom: 0.75rem;
+    left: 0%;
+    transform: translate(-50%, -100%);
+    display: inline-flex;
+    align-items: baseline;
+    background: #eff6ff;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+    border-radius: 8px;
+    padding: 0.1rem 0.45rem;
+    font-size: 1.6em;
+    font-weight: 700;
+    line-height: 1.1;
+    pointer-events: none;
+    white-space: nowrap;
+}
+
+.timestamp-badge em {
+    font-style: italic;
+}
+
+.timestamp-badge sub {
+    font-size: 0.5em;
+    line-height: 1;
+    vertical-align: sub;
+}
+
+.timestamp-badge sub.odd-timestamp {
+    color: #dc2626;
+}
+
+.bullet-time-label {
+    margin-left: 0.35rem;
+    font-size: 0.48em;
+    font-weight: 600;
+    color: #dc2626;
+    line-height: 1;
+    vertical-align: baseline;
+}
+
+.timestamp-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 6px;
+    background: #3b82f6;
+    border: 2px solid #ffffff;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+    cursor: pointer;
+    margin-top: -7px;
+}
+
+.timestamp-slider::-webkit-slider-runnable-track {
+    height: 6px;
+    border-radius: 999px;
+    background: #dbeafe;
+}
+
+.timestamp-slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 6px;
+    background: #3b82f6;
+    border: 2px solid #ffffff;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+    cursor: pointer;
+}
+
+.timestamp-slider::-moz-range-track {
+    height: 6px;
+    border-radius: 999px;
+    background: #dbeafe;
+}
+
+.timestamp-media-row {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+}
+
+.timestamp-media-card {
+    min-width: 0;
+}
+
+.timestamp-media-title {
+    text-align: center;
+    font-weight: 700;
+    color: #334155;
+    margin-bottom: 0.5rem;
+    font-size: 1rem;
+}
+
+@media (min-width: 1024px) {
+    .timestamp-media-row {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}

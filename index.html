@@ -77,8 +77,11 @@
         <img src="assets/figure2.png" class="analysis-image" alt="Figure 2 comparison" />
       </div>
       <ul style="list-style-type: disc; margin-left: 1.5rem; margin-top: 1rem; color: var(--color-text-main); font-size: 1.1rem; line-height: 1.6;">
-        <li><strong>Pixel-wise 4DGS:</strong> predicts per-pixel Gaussians, which leads to <strong>duplicated Gaussians and ghost artifacts</strong> at interpolated timestamps, and a <strong>view-dependent bias</strong> that underuses distant temporal evidence and leaves occluded regions poorly reconstructed.</li>
-        <li><strong>Our method:</strong> uses a <strong>compact query bottleneck</strong> to aggregate globally across time and views, yielding <strong>better motion consistency</strong> with fewer duplication and occlusion failures.</li>
+        <li><strong>Pixel-wise 4DGS <sup>[1, 2, 3]</sup>:</strong> predicts per-pixel Gaussians, which leads to <strong>duplicated Gaussians and ghost artifacts</strong> at interpolated timestamps, and a <strong>view-dependent bias</strong> that underuses distant temporal evidence and leaves occluded regions poorly reconstructed.</li>
+        <li><strong>Our method:</strong> uses a <strong>compact query bottleneck</strong> to aggregate globally across time and views, yielding <strong>better motion consistency</strong> with fewer duplication and occlusion failures.
+          <br>
+          <span style="font-size: 0.85rem; color: #94a3b8;">[1] MoVieS: Motion-Aware 4D Dynamic View Synthesis in One Second<br>[2] 4DGT: Learning a 4D Gaussian Transformer Using Real-World Monocular Videos<br>[3] NeoVerse: Enhancing 4D World Model with in-the-wild Monocular Videos</span>
+        </li>
       </ul>
     </div>
   </section>
@@ -102,6 +105,42 @@
       <div class="results-block">
         <h2 class="section-title">Qualitative Results</h2>
         <div id="carousel-qual" class="carousel-container"></div>
+      </div>
+      <div class="results-block">
+        <h2 class="section-title">Timestamp Viewer (iPhone Windmill)</h2>
+        <p class="timestamp-slider-label"><span class="bullet-time-red">Bullet timestamps</span>: inferred through context timestamps.</p>
+        <div class="timestamp-viewer">
+          <div class="timestamp-slider-wrap">
+            <div id="windmill-timestamp-badge" class="timestamp-badge"><em>T</em><sub>0</sub></div>
+            <input id="windmill-timestamp-slider" class="timestamp-slider" type="range" min="0" max="61" step="1" value="0" />
+          </div>
+          <div class="timestamp-media-row">
+            <div class="timestamp-media-card">
+              <div class="timestamp-media-title">Context</div>
+              <div class="analysis-image-container">
+                <img id="windmill-context-image" class="analysis-image" src="./assets/iphone/windmill/context/context_t0000_cam02.png" alt="Windmill context frame" />
+              </div>
+            </div>
+            <div class="timestamp-media-card">
+              <div class="timestamp-media-title">Novel view 1</div>
+              <div class="analysis-image-container">
+                <video id="windmill-view0-video" muted playsinline preload="metadata" class="analysis-image dual-video-media">
+                  <source src="./assets/iphone/windmill/iphone_windmill_view0_60.mp4" type="video/mp4">
+                  Your browser does not support the video tag.
+                </video>
+              </div>
+            </div>
+            <div class="timestamp-media-card">
+              <div class="timestamp-media-title">Novel view 2</div>
+              <div class="analysis-image-container">
+                <video id="windmill-view1-video" muted playsinline preload="metadata" class="analysis-image dual-video-media">
+                  <source src="./assets/iphone/windmill/iphone_windmill_view1_60.mp4" type="video/mp4">
+                  Your browser does not support the video tag.
+                </video>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </section>
@@ -374,12 +413,74 @@
       });
     }
 
+    function initWindmillTimestampViewer() {
+      const slider = document.getElementById('windmill-timestamp-slider');
+      const badge = document.getElementById('windmill-timestamp-badge');
+      const contextImage = document.getElementById('windmill-context-image');
+      const view0 = document.getElementById('windmill-view0-video');
+      const view1 = document.getElementById('windmill-view1-video');
+      if (!slider || !badge || !contextImage || !view0 || !view1) return;
+
+      const availableContextFrames = [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 40, 60];
+      const maxTimestamp = 61;
+
+      function nearestContextFrame(target) {
+        let closest = availableContextFrames[0];
+        let bestDist = Math.abs(target - closest);
+        for (let i = 1; i < availableContextFrames.length; i += 1) {
+          const d = Math.abs(target - availableContextFrames[i]);
+          if (d < bestDist) {
+            bestDist = d;
+            closest = availableContextFrames[i];
+          }
+        }
+        return closest;
+      }
+
+      function setVideoTime(video, t) {
+        if (!video || !Number.isFinite(video.duration) || video.duration <= 0) return;
+        const normalized = t / maxTimestamp;
+        video.currentTime = normalized * video.duration;
+      }
+
+      function updateFromTimestamp(t) {
+        const clamped = Math.max(0, Math.min(maxTimestamp, t));
+        const isOddTimestamp = clamped % 2 === 1;
+        const subClass = isOddTimestamp ? "odd-timestamp" : "";
+        const bulletLabel = isOddTimestamp ? `<span class="bullet-time-label">(Bullet Time)</span>` : "";
+        badge.innerHTML = `<em>T</em><sub class="${subClass}">${clamped}</sub>${bulletLabel}`;
+        const progress = clamped / maxTimestamp;
+        badge.style.left = `${progress * 100}%`;
+
+        const contextTarget = Math.floor(clamped / 2) * 2;
+        const contextFrame = nearestContextFrame(contextTarget);
+        const contextFile = String(contextFrame).padStart(4, '0');
+        contextImage.src = `./assets/iphone/windmill/context/context_t${contextFile}_cam02.png`;
+
+        setVideoTime(view0, clamped);
+        setVideoTime(view1, clamped);
+      }
+
+      slider.addEventListener('input', (e) => {
+        updateFromTimestamp(parseInt(e.target.value, 10) || 0);
+      });
+
+      [view0, view1].forEach((video) => {
+        video.addEventListener('loadedmetadata', () => {
+          updateFromTimestamp(parseInt(slider.value, 10) || 0);
+        });
+      });
+
+      updateFromTimestamp(0);
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
       new Carousel('carousel-quan', quantitativeData, renderQuantitative);
       const qualitativeDavisData = qualitativeAllData.filter((item) => item.desc.includes('DAVIS'));
       const qualitativeIphoneData = qualitativeAllData.filter((item) => item.desc.includes('iPhone'));
       const qualitativeOrderedData = [...qualitativeIphoneData, ...qualitativeDavisData];
       new Carousel('carousel-qual', qualitativeOrderedData, renderImageCard);
+      initWindmillTimestampViewer();
       initScrollSpy();
     });
   </script>
