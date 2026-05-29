@@ -1166,6 +1166,7 @@ p {
 .timestamp-slider {
     width: 100%;
     accent-color: #3b82f6;
+    min-height: 36px;
 }
 
 .timestamp-badge {
@@ -1214,25 +1215,25 @@ p {
 .timestamp-slider::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    width: 18px;
-    height: 18px;
+    width: 24px;
+    height: 24px;
     border-radius: 6px;
     background: #3b82f6;
     border: 2px solid #ffffff;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
     cursor: pointer;
-    margin-top: -7px;
+    margin-top: -9px;
 }
 
 .timestamp-slider::-webkit-slider-runnable-track {
-    height: 6px;
+    height: 8px;
     border-radius: 999px;
     background: #dbeafe;
 }
 
 .timestamp-slider::-moz-range-thumb {
-    width: 18px;
-    height: 18px;
+    width: 24px;
+    height: 24px;
     border-radius: 6px;
     background: #3b82f6;
     border: 2px solid #ffffff;
@@ -1241,7 +1242,7 @@ p {
 }
 
 .timestamp-slider::-moz-range-track {
-    height: 6px;
+    height: 8px;
     border-radius: 999px;
     background: #dbeafe;
 }
@@ -1255,6 +1256,13 @@ p {
 
 .timestamp-media-card {
     min-width: 0;
+}
+
+.timestamp-viewer .analysis-image {
+    width: 100%;
+    height: auto;
+    max-height: 320px;
+    object-fit: contain;
 }
 
 .timestamp-media-title {
