@@ -74,7 +74,7 @@
     <div class="container">
       <div class="results-block timestamp-viewer-block" style="margin-bottom: 0;">
         <h2 class="section-title">Novel-view and Time Interactive Viewer</h2>
-        <p class="timestamp-slider-label"><span class="bullet-time-red">Bullet timestamps</span>: inferred through context timestamps. Results are shown on the DyCheck (iPhone) dataset, where context view frames are used to synthesize novel view 1 and novel view 2.</p>
+        <p class="timestamp-slider-label"><span class="target-time-red">Target Timestamps</span>: inferred through context timestamps. <br>Results are shown on the DyCheck (iPhone) dataset, where context view frames are used to synthesize novel view 1 and novel view 2.</p>
         <div id="carousel-timestamp" class="carousel-container"></div>
       </div>
     </div>
@@ -480,7 +480,7 @@
         const clamped = Math.max(0, Math.min(maxTimestamp, t));
         const isOddTimestamp = clamped % 2 === 1;
         const subClass = isOddTimestamp ? "odd-timestamp" : "";
-        const bulletLabel = isOddTimestamp ? `<span class="bullet-time-label">(Bullet Time)</span>` : "";
+        const bulletLabel = isOddTimestamp ? `<span class="target-time-label">(Target Time)</span>` : "";
         badge.innerHTML = `<em>T</em><sub class="${subClass}">${clamped}</sub>${bulletLabel}`;
         const progress = clamped / maxTimestamp;
         badge.style.left = `${progress * 100}%`;

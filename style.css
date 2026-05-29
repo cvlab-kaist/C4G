@@ -1158,7 +1158,7 @@ p {
     font-weight: 600;
 }
 
-.bullet-time-red {
+.target-time-red {
     color: #dc2626;
     font-weight: 700;
 }
@@ -1203,7 +1203,7 @@ p {
     color: #dc2626;
 }
 
-.bullet-time-label {
+.target-time-label {
     margin-left: 0.35rem;
     font-size: 0.48em;
     font-weight: 600;
