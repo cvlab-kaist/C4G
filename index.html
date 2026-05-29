@@ -70,7 +70,17 @@
     </div>
   </section>
 
-  <section id="previous-works" class="section">
+  <section class="section">
+    <div class="container">
+      <div class="results-block timestamp-viewer-block" style="margin-bottom: 0;">
+        <h2 class="section-title">Novel-view and Time Interactive Viewer</h2>
+        <p class="timestamp-slider-label"><span class="bullet-time-red">Bullet timestamps</span>: inferred through context timestamps.</p>
+        <div id="carousel-timestamp" class="carousel-container"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="previous-works" class="section alt-bg">
     <div class="container">
       <h2 class="section-title">Comparison with Previous Works</h2>
       <div class="analysis-image-container" style="padding: 6px; width: 80%; max-width: 80%; margin: 0 auto;">
@@ -86,7 +96,7 @@
     </div>
   </section>
 
-  <section id="framework" class="section alt-bg">
+  <section id="framework" class="section">
     <div class="container">
       <h2 class="section-title">Model Architecture</h2>
       <p>Our model first extracts timestamp-injected visual features, then uses learnable queries refined by transformer decoding to produce timestamp-conditioned Gaussians. Query tokens gather geometrically coherent signals across frames, and decoded Gaussian positions are modulated by the target timestamp for temporal interpolation. A diffusion-based refinement module improves rendering fidelity, and a feature decoder reuses attention patterns for 4D feature lifting.</p>
@@ -102,45 +112,14 @@
         <h2 class="section-title">Quantitative Results</h2>
         <div id="carousel-quan" class="carousel-container"></div>
       </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
       <div class="results-block">
         <h2 class="section-title">Qualitative Results</h2>
         <div id="carousel-qual" class="carousel-container"></div>
-      </div>
-      <div class="results-block">
-        <h2 class="section-title">Timestamp Viewer (iPhone Windmill)</h2>
-        <p class="timestamp-slider-label"><span class="bullet-time-red">Bullet timestamps</span>: inferred through context timestamps.</p>
-        <div class="timestamp-viewer">
-          <div class="timestamp-slider-wrap">
-            <div id="windmill-timestamp-badge" class="timestamp-badge"><em>T</em><sub>0</sub></div>
-            <input id="windmill-timestamp-slider" class="timestamp-slider" type="range" min="0" max="61" step="1" value="0" />
-          </div>
-          <div class="timestamp-media-row">
-            <div class="timestamp-media-card">
-              <div class="timestamp-media-title">Context</div>
-              <div class="analysis-image-container">
-                <img id="windmill-context-image" class="analysis-image" src="./assets/iphone/windmill/context/context_t0000_cam02.png" alt="Windmill context frame" />
-              </div>
-            </div>
-            <div class="timestamp-media-card">
-              <div class="timestamp-media-title">Novel view 1</div>
-              <div class="analysis-image-container">
-                <video id="windmill-view0-video" muted playsinline preload="metadata" class="analysis-image dual-video-media">
-                  <source src="./assets/iphone/windmill/iphone_windmill_view0_60.mp4" type="video/mp4">
-                  Your browser does not support the video tag.
-                </video>
-              </div>
-            </div>
-            <div class="timestamp-media-card">
-              <div class="timestamp-media-title">Novel view 2</div>
-              <div class="analysis-image-container">
-                <video id="windmill-view1-video" muted playsinline preload="metadata" class="analysis-image dual-video-media">
-                  <source src="./assets/iphone/windmill/iphone_windmill_view1_60.mp4" type="video/mp4">
-                  Your browser does not support the video tag.
-                </video>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   </section>
@@ -319,35 +298,53 @@
           "./assets/davis/gold-fish/context_frames/context_frac_3_n0011.png"
         ]
       },
+      // {
+      //   title: "",
+      //   desc: "Qualitative video result on <strong style='color:#7c3aed;'>iPhone</strong> scene: windmill. (Including In-between Keyframe Prediction)",
+      //   layout: "dualVideoWithContext",
+      //   videos: [
+      //     "./assets/iphone/windmill/iphone_windmill_view0_60_fps5.mp4",
+      //     "./assets/iphone/windmill/iphone_windmill_view1_60_fps5.mp4"
+      //   ],
+      //   contextImages: [
+      //     "./assets/iphone/windmill/context/context_t0000_cam02.png",
+      //     "./assets/iphone/windmill/context/context_t0020_cam02.png",
+      //     "./assets/iphone/windmill/context/context_t0040_cam02.png",
+      //     "./assets/iphone/windmill/context/context_t0060_cam02.png"
+      //   ]
+      // },
+      // {
+      //   title: "",
+      //   desc: "Qualitative video result on <strong style='color:#7c3aed;'>iPhone</strong> scene: teddy. (Including In-between Keyframe Prediction)",
+      //   layout: "dualVideoWithContext",
+      //   videos: [
+      //     "./assets/iphone/teddybear/iphone_bear_view0.mp4",
+      //     "./assets/iphone/teddybear/iphone_bear_view1.mp4"
+      //   ],
+      //   contextImages: [
+      //     "./assets/iphone/teddybear/context/context_t0000_cam02.png",
+      //     "./assets/iphone/teddybear/context/context_t0022_cam02.png",
+      //     "./assets/iphone/teddybear/context/context_t0042_cam02.png",
+      //     "./assets/iphone/teddybear/context/context_t0062_cam02.png"
+      //   ]
+      // }
+    ];
+    const timestampViewerData = [
       {
-        title: "",
-        desc: "Qualitative video result on <strong style='color:#7c3aed;'>iPhone</strong> scene: windmill. (Including In-between Keyframe Prediction)",
-        layout: "dualVideoWithContext",
-        videos: [
-          "./assets/iphone/windmill/iphone_windmill_view0_60_fps5.mp4",
-          "./assets/iphone/windmill/iphone_windmill_view1_60_fps5.mp4"
-        ],
-        contextImages: [
-          "./assets/iphone/windmill/context/context_t0000_cam02.png",
-          "./assets/iphone/windmill/context/context_t0020_cam02.png",
-          "./assets/iphone/windmill/context/context_t0040_cam02.png",
-          "./assets/iphone/windmill/context/context_t0060_cam02.png"
-        ]
+        key: "windmill",
+        sceneTitle: "Windmill",
+        contextBasePath: "./assets/iphone/windmill/context",
+        contextInitialImage: "./assets/iphone/windmill/context/context_t0000_cam02.png",
+        view0Video: "./assets/iphone/windmill/iphone_windmill_view0_60.mp4",
+        view1Video: "./assets/iphone/windmill/iphone_windmill_view1_60.mp4"
       },
       {
-        title: "",
-        desc: "Qualitative video result on <strong style='color:#7c3aed;'>iPhone</strong> scene: teddy. (Including In-between Keyframe Prediction)",
-        layout: "dualVideoWithContext",
-        videos: [
-          "./assets/iphone/teddybear/iphone_bear_view0.mp4",
-          "./assets/iphone/teddybear/iphone_bear_view1.mp4"
-        ],
-        contextImages: [
-          "./assets/iphone/teddybear/context/context_t0000_cam02.png",
-          "./assets/iphone/teddybear/context/context_t0022_cam02.png",
-          "./assets/iphone/teddybear/context/context_t0042_cam02.png",
-          "./assets/iphone/teddybear/context/context_t0062_cam02.png"
-        ]
+        key: "teddybear",
+        sceneTitle: "Teddybear",
+        contextBasePath: "./assets/iphone/teddybear/context",
+        contextInitialImage: "./assets/iphone/teddybear/context/context_t0000_cam02.png",
+        view0Video: "./assets/iphone/teddybear/iphone_bear_view0.mp4",
+        view1Video: "./assets/iphone/teddybear/iphone_bear_view1.mp4"
       }
     ];
 
@@ -381,6 +378,42 @@
       const containerStyle = isVideo ? ` style="width:70%; max-width:70%; margin:0 auto;"` : "";
       return `<div class="results-slide-content"><h3 class="results-slide-title">${item.title}</h3><div class="analysis-image-container"${containerStyle}>${media}</div><div class="results-caption"><p>${item.desc}</p></div></div>`;
     }
+    function renderTimestampViewer(item) {
+      return `<div class="results-slide-content">
+        <div class="timestamp-viewer">
+          <div class="timestamp-slider-wrap">
+            <div id="${item.key}-timestamp-badge" class="timestamp-badge"><em>T</em><sub>0</sub></div>
+            <input id="${item.key}-timestamp-slider" class="timestamp-slider" type="range" min="0" max="61" step="1" value="0" />
+          </div>
+          <div class="timestamp-media-row">
+            <div class="timestamp-media-card">
+              <div class="timestamp-media-title">Context View</div>
+              <div class="analysis-image-container">
+                <img id="${item.key}-context-image" class="analysis-image" src="${item.contextInitialImage}" alt="${item.sceneTitle} context frame" />
+              </div>
+            </div>
+            <div class="timestamp-media-card">
+              <div class="timestamp-media-title">Novel view 1</div>
+              <div class="analysis-image-container">
+                <video id="${item.key}-view0-video" muted playsinline preload="metadata" class="analysis-image dual-video-media">
+                  <source src="${item.view0Video}" type="video/mp4">
+                  Your browser does not support the video tag.
+                </video>
+              </div>
+            </div>
+            <div class="timestamp-media-card">
+              <div class="timestamp-media-title">Novel view 2</div>
+              <div class="analysis-image-container">
+                <video id="${item.key}-view1-video" muted playsinline preload="metadata" class="analysis-image dual-video-media">
+                  <source src="${item.view1Video}" type="video/mp4">
+                  Your browser does not support the video tag.
+                </video>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    }
 
     function initScrollSpy() {
       const sections = document.querySelectorAll('section[id]');
@@ -413,15 +446,15 @@
       });
     }
 
-    function initWindmillTimestampViewer() {
-      const slider = document.getElementById('windmill-timestamp-slider');
-      const badge = document.getElementById('windmill-timestamp-badge');
-      const contextImage = document.getElementById('windmill-context-image');
-      const view0 = document.getElementById('windmill-view0-video');
-      const view1 = document.getElementById('windmill-view1-video');
+    function initTimestampViewer(config) {
+      const slider = document.getElementById(config.sliderId);
+      const badge = document.getElementById(config.badgeId);
+      const contextImage = document.getElementById(config.contextImageId);
+      const view0 = document.getElementById(config.view0Id);
+      const view1 = document.getElementById(config.view1Id);
       if (!slider || !badge || !contextImage || !view0 || !view1) return;
 
-      const availableContextFrames = [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 40, 60];
+      const availableContextFrames = Array.from({ length: 32 }, (_, i) => i * 2);
       const maxTimestamp = 61;
 
       function nearestContextFrame(target) {
@@ -455,7 +488,7 @@
         const contextTarget = Math.floor(clamped / 2) * 2;
         const contextFrame = nearestContextFrame(contextTarget);
         const contextFile = String(contextFrame).padStart(4, '0');
-        contextImage.src = `./assets/iphone/windmill/context/context_t${contextFile}_cam02.png`;
+        contextImage.src = `${config.contextBasePath}/context_t${contextFile}_cam02.png`;
 
         setVideoTime(view0, clamped);
         setVideoTime(view1, clamped);
@@ -480,7 +513,17 @@
       const qualitativeIphoneData = qualitativeAllData.filter((item) => item.desc.includes('iPhone'));
       const qualitativeOrderedData = [...qualitativeIphoneData, ...qualitativeDavisData];
       new Carousel('carousel-qual', qualitativeOrderedData, renderImageCard);
-      initWindmillTimestampViewer();
+      new Carousel('carousel-timestamp', timestampViewerData, renderTimestampViewer);
+      timestampViewerData.forEach((item) => {
+        initTimestampViewer({
+          sliderId: `${item.key}-timestamp-slider`,
+          badgeId: `${item.key}-timestamp-badge`,
+          contextImageId: `${item.key}-context-image`,
+          view0Id: `${item.key}-view0-video`,
+          view1Id: `${item.key}-view1-video`,
+          contextBasePath: item.contextBasePath
+        });
+      });
       initScrollSpy();
     });
   </script>

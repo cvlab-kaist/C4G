@@ -1137,11 +1137,17 @@ p {
     width: 100%;
 }
 
+.timestamp-viewer-block {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 1.25rem;
+}
+
 .timestamp-slider-wrap {
     width: min(100%, 1080px);
     margin: 0 auto 1.25rem auto;
     position: relative;
-    padding-top: 1.9rem;
+    padding-top: 3.3rem;
 }
 
 .timestamp-slider-label {
@@ -1256,7 +1262,7 @@ p {
     font-weight: 700;
     color: #334155;
     margin-bottom: 0.5rem;
-    font-size: 1rem;
+    font-size: 1.25rem;
 }
 
 @media (min-width: 1024px) {
