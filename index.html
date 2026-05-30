@@ -72,10 +72,9 @@
 
   <section class="section">
     <div class="container">
-      <div class="results-block timestamp-viewer-block" style="margin-bottom: 0;">
-        <h2 class="section-title">Novel-view and Time Interactive Viewer</h2>
-        <p class="timestamp-slider-label"><span class="target-time-red">Target Timestamps</span>: inferred through context timestamps. <br>Results are shown on the DyCheck (iPhone) dataset, where context view frames are used to synthesize novel view 1 and novel view 2.</p>
-        <div id="carousel-timestamp" class="carousel-container"></div>
+      <div class="results-block">
+        <h2 class="section-title">Qualitative Results</h2>
+        <div id="carousel-qual" class="carousel-container"></div>
       </div>
     </div>
   </section>
@@ -111,15 +110,6 @@
       <div class="results-block">
         <h2 class="section-title">Quantitative Results</h2>
         <div id="carousel-quan" class="carousel-container"></div>
-      </div>
-    </div>
-  </section>
-
-  <section class="section">
-    <div class="container">
-      <div class="results-block">
-        <h2 class="section-title">Qualitative Results</h2>
-        <div id="carousel-qual" class="carousel-container"></div>
       </div>
     </div>
   </section>
@@ -298,36 +288,36 @@
           "./assets/davis/gold-fish/context_frames/context_frac_3_n0011.png"
         ]
       },
-      // {
-      //   title: "",
-      //   desc: "Qualitative video result on <strong style='color:#7c3aed;'>iPhone</strong> scene: windmill. (Including In-between Keyframe Prediction)",
-      //   layout: "dualVideoWithContext",
-      //   videos: [
-      //     "./assets/iphone/windmill/iphone_windmill_view0_60_fps5.mp4",
-      //     "./assets/iphone/windmill/iphone_windmill_view1_60_fps5.mp4"
-      //   ],
-      //   contextImages: [
-      //     "./assets/iphone/windmill/context/context_t0000_cam02.png",
-      //     "./assets/iphone/windmill/context/context_t0020_cam02.png",
-      //     "./assets/iphone/windmill/context/context_t0040_cam02.png",
-      //     "./assets/iphone/windmill/context/context_t0060_cam02.png"
-      //   ]
-      // },
-      // {
-      //   title: "",
-      //   desc: "Qualitative video result on <strong style='color:#7c3aed;'>iPhone</strong> scene: teddy. (Including In-between Keyframe Prediction)",
-      //   layout: "dualVideoWithContext",
-      //   videos: [
-      //     "./assets/iphone/teddybear/iphone_bear_view0.mp4",
-      //     "./assets/iphone/teddybear/iphone_bear_view1.mp4"
-      //   ],
-      //   contextImages: [
-      //     "./assets/iphone/teddybear/context/context_t0000_cam02.png",
-      //     "./assets/iphone/teddybear/context/context_t0022_cam02.png",
-      //     "./assets/iphone/teddybear/context/context_t0042_cam02.png",
-      //     "./assets/iphone/teddybear/context/context_t0062_cam02.png"
-      //   ]
-      // }
+      {
+        title: "",
+        desc: "Qualitative video result on <strong style='color:#7c3aed;'>iPhone</strong> scene: windmill. (Including In-between Keyframe Prediction)",
+        layout: "dualVideoWithContext",
+        videos: [
+          "./assets/iphone/windmill/iphone_windmill_view0_60_fps5.mp4",
+          "./assets/iphone/windmill/iphone_windmill_view1_60_fps5.mp4"
+        ],
+        contextImages: [
+          "./assets/iphone/windmill/context/context_t0000_cam02.png",
+          "./assets/iphone/windmill/context/context_t0020_cam02.png",
+          "./assets/iphone/windmill/context/context_t0040_cam02.png",
+          "./assets/iphone/windmill/context/context_t0060_cam02.png"
+        ]
+      },
+      {
+        title: "",
+        desc: "Qualitative video result on <strong style='color:#7c3aed;'>iPhone</strong> scene: teddy. (Including In-between Keyframe Prediction)",
+        layout: "dualVideoWithContext",
+        videos: [
+          "./assets/iphone/teddybear/iphone_bear_view0.mp4",
+          "./assets/iphone/teddybear/iphone_bear_view1.mp4"
+        ],
+        contextImages: [
+          "./assets/iphone/teddybear/context/context_t0000_cam02.png",
+          "./assets/iphone/teddybear/context/context_t0022_cam02.png",
+          "./assets/iphone/teddybear/context/context_t0042_cam02.png",
+          "./assets/iphone/teddybear/context/context_t0062_cam02.png"
+        ]
+      }
     ];
     const timestampViewerData = [
       {
@@ -513,17 +503,17 @@
       const qualitativeIphoneData = qualitativeAllData.filter((item) => item.desc.includes('iPhone'));
       const qualitativeOrderedData = [...qualitativeIphoneData, ...qualitativeDavisData];
       new Carousel('carousel-qual', qualitativeOrderedData, renderImageCard);
-      new Carousel('carousel-timestamp', timestampViewerData, renderTimestampViewer);
-      timestampViewerData.forEach((item) => {
-        initTimestampViewer({
-          sliderId: `${item.key}-timestamp-slider`,
-          badgeId: `${item.key}-timestamp-badge`,
-          contextImageId: `${item.key}-context-image`,
-          view0Id: `${item.key}-view0-video`,
-          view1Id: `${item.key}-view1-video`,
-          contextBasePath: item.contextBasePath
-        });
-      });
+      // new Carousel('carousel-timestamp', timestampViewerData, renderTimestampViewer);
+      // timestampViewerData.forEach((item) => {
+      //   initTimestampViewer({
+      //     sliderId: `${item.key}-timestamp-slider`,
+      //     badgeId: `${item.key}-timestamp-badge`,
+      //     contextImageId: `${item.key}-context-image`,
+      //     view0Id: `${item.key}-view0-video`,
+      //     view1Id: `${item.key}-view1-video`,
+      //     contextBasePath: item.contextBasePath
+      //   });
+      // });
       initScrollSpy();
     });
   </script>
