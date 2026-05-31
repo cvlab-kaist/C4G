@@ -79,13 +79,13 @@ C4G checkpoints to be released:
 
 ## Training
 
-To train C4G, run:
+To train C4G, you can run the following commands:
 
 ```bash
 bash scripts/train.sh
 ```
 
-The main training config is `config/training/c4g.yaml`.
+If you want to change configs of our training code, you can just modify the main training config in `config/training/c4g.yaml`.
 
 If you do not want to log to wandb, keep `wandb.mode=disabled`.
 
