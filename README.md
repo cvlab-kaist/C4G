@@ -41,10 +41,7 @@
   </a>
 </p>
 
-> We propose a feed-forward framework for dynamic monocular videos using
-<b>timestamp-conditioned compact Gaussian query tokens</b>.
-Our approach learns globally coherent scene motion for feed-forward 4D reconstruction
-without per-scene optimization.
+> We propose a feed-forward dynamic reconstruction network that effectively captures the <strong>global motion of dynamic scenes</strong>. Our method employs a timestamp-conditioned, query-based transformer Gaussian decoder that aggregates geometrically consistent features from multi-frame videos, enabling each Gaussian to model globally coherent motion.
 
 ### What to Expect
 - [x] Training code for C4G Gaussian reconstruction. <br>
@@ -94,7 +91,9 @@ If you do not want to log to wandb, keep `wandb.mode=disabled`.
 
 ## VDM-based Rendering Enhancement Module
 
-The optional VDM-based rendering enhancement module code is included under `submodules/DiffSynth-Studio-ref_keyframes_fixed`. This module follows VACE and uses Wan2.1-VACE-1.3B in the paper.
+The optional VDM-based rendering enhancement module code is included under [here](https://github.com/cvlab-kaist/C4G/tree/main/submodules/DiffSynth-Studio-ref_keyframes_fixed).
+
+To train and inference the VDM-based rendering enhancement module, please follow the [VDM_readme.md](https://github.com/cvlab-kaist/C4G/blob/main/submodules/DiffSynth-Studio-ref_keyframes_fixed/README.md)
 
 ## Citation
 
