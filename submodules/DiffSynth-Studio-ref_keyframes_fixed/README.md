@@ -6,27 +6,27 @@ This document describes the training and evaluation entry points used in this wo
 
 ### Training
 - Training code:
-  - `/music-3d-shared-disk/user/KAIST/MK/foundation_models/DiffSynth-Studio-ref_keyframes_fixed/examples/wanvideo/model_training/train_vace.py`
+  - `DiffSynth-Studio/examples/wanvideo/model_training/train_vace.py`
 - Training script:
-  - `/music-3d-shared-disk/user/KAIST/MK/foundation_models/DiffSynth-Studio-ref_keyframes_fixed/examples/wanvideo/model_training/lora/Wan2.1-VACE-1.3B.sh`
+  - `DiffSynth-Studio/examples/wanvideo/model_training/lora/Wan2.1-VACE-1.3B.sh`
 
 ### DAVIS Evaluation
 - Evaluation code:
-  - `/music-3d-shared-disk/user/KAIST/MK/foundation_models/DiffSynth-Studio-ref_keyframes_fixed/examples/wanvideo/evaluation/evaluation_davis.py`
+  - `DiffSynth-Studio/examples/wanvideo/evaluation/evaluation_davis.py`
 - Evaluation script:
-  - `/music-3d-shared-disk/user/KAIST/MK/foundation_models/DiffSynth-Studio-ref_keyframes_fixed/examples/wanvideo/evaluation/evaulation_davis.sh`
+  - `DiffSynth-Studio/examples/wanvideo/evaluation/evaulation_davis.sh`
 
 ## Checkpoint
 
 - LoRA checkpoint used for evaluation:
-  - `/music-3d-shared-disk/user/KAIST/MK/preprocessing/c4g/checkpoints/resume6-val-step-51960.safetensors`
+  - `[c4g_vdm_refinement.safetensors](https://huggingface.co/mungyeom011/C4G)`
 
 ## Training
 
 Run training with:
 
 ```bash
-bash /music-3d-shared-disk/user/KAIST/MK/foundation_models/DiffSynth-Studio-ref_keyframes_fixed/examples/wanvideo/model_training/lora/Wan2.1-VACE-1.3B.sh
+bash DiffSynth-Studio/examples/wanvideo/model_training/lora/Wan2.1-VACE-1.3B.sh
 ```
 
 ## Evaluation (DAVIS)
@@ -34,7 +34,7 @@ bash /music-3d-shared-disk/user/KAIST/MK/foundation_models/DiffSynth-Studio-ref_
 Run DAVIS evaluation with:
 
 ```bash
-bash /music-3d-shared-disk/user/KAIST/MK/foundation_models/DiffSynth-Studio-ref_keyframes_fixed/examples/wanvideo/evaluation/evaulation_davis.sh
+bash DiffSynth-Studio/examples/wanvideo/evaluation/evaulation_davis.sh
 ```
 
 ## Acknowledgements
