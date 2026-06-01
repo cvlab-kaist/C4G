@@ -98,7 +98,7 @@ To train and inference the VDM-based rendering enhancement module, please follow
 ## Citation
 
 ```bibtex
-@article{kim2026c4g,
+@article{,
   title={Learning Global Motion with Compact Gaussians for Feed-Forward 4D Reconstruction},
   author={Kim, Mungyeom and Jeon, Minkyeong and An, Honggyu and Jung, Jaewoo and Ko, Hyunah and Han, Jisang and Yu, Hyeonseo and Shin, Donghwan and Hong, Sunghwan and Narihira, Takuya and Fukuda, Kazumi and Mitsufuji, Yuki and Kim, Seungryong},
   journal={arXiv preprint},
