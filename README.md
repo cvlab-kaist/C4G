@@ -75,7 +75,7 @@ C4G initializes from the C3G Gaussian decoder checkpoint. Download `gaussian_dec
 C4G checkpoints to be released:
 
 * `c4g_reconstruction.ckpt`: TBD
-* `c4g_vdm_refinement.ckpt`: TBD
+* `c4g_vdm_refinement.safetensors`: TBD
 
 ## Training
 
