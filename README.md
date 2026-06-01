@@ -46,7 +46,7 @@
 ### What to Expect
 - [x] Training code for C4G Gaussian reconstruction. <br>
 - [x] VDM-based rendering enhancement module code. <br>
-- [ ] Pretrained C4G weights. <br>
+- [x] Pretrained C4G weights. <br>
 
 ## Installation
 
@@ -72,10 +72,7 @@ The default paths are placeholders written as `/path/to/...`.
 
 C4G initializes from the C3G Gaussian decoder checkpoint. Download `gaussian_decoder.ckpt` from the [C3G Hugging Face repository](https://huggingface.co/honggyuAn/C3G/tree/main) and place it under `pretrained_weights/gaussian_decoder.ckpt`.
 
-C4G checkpoints to be released:
-
-* `c4g_reconstruction.ckpt`: TBD
-* `c4g_vdm_refinement.safetensors`: TBD
+C4G checkpoints are available in the [C4G Hugging Face repository](https://huggingface.co/mungyeom011/C4G/tree/main).
 
 ## Training
 
@@ -91,9 +88,9 @@ If you do not want to log to wandb, keep `wandb.mode=disabled`.
 
 ## VDM-based Rendering Enhancement Module
 
-The optional VDM-based rendering enhancement module code is included under [here](https://github.com/cvlab-kaist/C4G/tree/main/submodules/DiffSynth-Studio-ref_keyframes_fixed).
+The optional VDM-based rendering enhancement module code is included under [submodules/DiffSynth-Studio](submodules/DiffSynth-Studio).
 
-To train and inference the VDM-based rendering enhancement module, please follow the [VDM_readme.md](https://github.com/cvlab-kaist/C4G/blob/main/submodules/DiffSynth-Studio-ref_keyframes_fixed/README.md)
+To train and inference the VDM-based rendering enhancement module, please follow [submodules/DiffSynth-Studio/README.md](submodules/DiffSynth-Studio/README.md).
 
 ## Citation
 

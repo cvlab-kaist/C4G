@@ -176,7 +176,7 @@ def load_wan_pipeline(
     print(f"[wan] vace_dir={vace_dir}", flush=True)
 
     for _p in list(_sys.path):
-        if _p != diffsynth_path and _p.endswith("DiffSynth-Studio-ref_keyframes_fixed"):
+        if _p != diffsynth_path and _p.endswith("DiffSynth-Studio"):
             _sys.path.remove(_p)
     if diffsynth_path not in _sys.path:
         _sys.path.insert(0, diffsynth_path)
