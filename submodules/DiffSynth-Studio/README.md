@@ -18,8 +18,8 @@ This document describes the training and evaluation entry points used in this wo
 
 ## Checkpoint
 
-- LoRA checkpoint used for evaluation:
-  - `/path/to/vdm_lora_checkpoint.safetensors`
+- LoRA checkpoint used for evaluation (trained on 480x832):
+  - [c4g_vdm_refinement.safetensors](https://huggingface.co/mungyeom011/C4G)
 
 ## Training
 
