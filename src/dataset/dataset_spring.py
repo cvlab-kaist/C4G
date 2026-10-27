@@ -21,6 +21,7 @@ import torch.nn.functional as F
 
 from ..geometry.projection import get_fov
 from .dataset import DatasetCfgCommon
+from .intrinsics import davis_intrinsics_like, maybe_apply_davis_intrinsics
 from .shims.augmentation_shim import apply_augmentation_shim
 from .shims.crop_shim import apply_crop_shim
 from .types import Stage
@@ -41,6 +42,17 @@ class DatasetSpringCfg(DatasetCfgCommon):
     augment: bool
     relative_pose: bool
     skip_bad_shape: bool
+
+    scale_bounds_with_baseline: bool = True
+
+    # Share of the mixed training sampler given to this dataset; items are
+    # drawn proportionally to their number of view-sampler windows.
+    sample_weight: float = 1.0
+    # Root of the maps written by scripts/preprocess_spring_motion.py. When
+    # set, every view ships depth / flow / next depth / dynamic mask (see
+    # shims/motion_fields.py) and the photometric `mask` comes from the GT
+    # rigidmap instead of `mask_root`.
+    motion_root: Path | None = None
 
 
 @dataclass
@@ -68,6 +80,7 @@ class DatasetSpring(Dataset):
         self.stage = stage
         self.view_sampler = view_sampler
         self.to_tensor = tf.ToTensor()
+        self._missing_mask_warned: set[str] = set()
         
         # load data
         self.data_root = os.path.join(cfg.roots[0], "train")
@@ -87,14 +100,42 @@ class DatasetSpring(Dataset):
         self.scene_ids = {}
         self.scenes = {}
         index = 0
+        min_frames = self._min_frames_for_view_sampler()
+        too_short = []
         with ThreadPoolExecutor(max_workers=32) as executor:
             futures = [executor.submit(self.load_data, os.path.join(self.data_root, scene_path)) for scene_path in self.data_list]
             for future in as_completed(futures):
                 scene_frames, scene_id = future.result()
+                if len(scene_frames) < min_frames:
+                    # The view sampler could never fit its context span into
+                    # this scene; every draw would raise and be resampled.
+                    too_short.append((scene_id, len(scene_frames)))
+                    continue
                 self.scenes[scene_id] = scene_frames
                 self.scene_ids[index] = scene_id
                 index += 1
+        if too_short:
+            print(
+                f"Spring: {self.stage}: excluded {len(too_short)} scene(s) with fewer "
+                f"than {min_frames} frames: "
+                + ", ".join(f"{scene}({n})" for scene, n in sorted(too_short))
+            )
         print(f"Spring: {self.stage}: loaded {len(self.scene_ids)} scenes")
+
+    def _min_frames_for_view_sampler(self) -> int:
+        """Smallest scene length the uniform view sampler can draw from.
+
+        The sampler places context views at start + i * gap for
+        i < num_context_views with start >= 0, so a scene needs at least
+        gap * (num_context_views - 1) + 1 frames. Other samplers get no filter.
+        """
+        sampler_cfg = getattr(self.view_sampler, "cfg", None)
+        gap = getattr(sampler_cfg, "gap", None)
+        initial_gap = getattr(sampler_cfg, "initial_gap", None)
+        if gap is None:
+            return 0
+        max_gap = max(gap, initial_gap if initial_gap is not None else gap)
+        return max_gap * (self.view_sampler.num_context_views - 1) + 1
 
     def readFlo5Flow(self, filename):
         with h5py.File(filename, "r") as f:
@@ -175,16 +216,72 @@ class DatasetSpring(Dataset):
         torch_images = torch.stack(resized_images)
         return torch_images
 
-    def load_masks(self, scene, mask_root, threhold: float = 0.8):
+    def load_masks(self, scene, mask_root, threhold: float = 0.8, num_frames=None, image_shape=None):
+        """Load the preprocessed dynamic masks of a scene.
+
+        When ``num_frames`` is given, a missing or mis-shaped mask file falls back
+        to all-static masks instead of raising, so a partially preprocessed mask
+        directory cannot stop training.
+        """
         mask_file = Path(mask_root) / f"{scene}_masks.npy"
-        if not mask_file.exists():
+        fallback_reason = None
+
+        if mask_file.exists():
+            masks = np.load(str(mask_file))
+            masks = torch.tensor(masks, dtype=torch.float32)
+            if num_frames is None or masks.shape[0] == num_frames:
+                return (masks > threhold).float()
+            fallback_reason = (
+                f"{mask_file} has {masks.shape[0]} frames but the scene has {num_frames}"
+            )
+        else:
+            fallback_reason = f"{mask_file} not found"
+
+        if num_frames is None:
             raise FileNotFoundError(f"Mask file not found at {mask_file}")
 
-        masks = np.load(str(mask_file))
-        masks = torch.tensor(masks, dtype=torch.float32)
-        masks = (masks > threhold).float()
-        return masks
+        if image_shape is None:
+            image_shape = tuple(self.cfg.input_image_shape)
+        if scene not in self._missing_mask_warned:
+            print(
+                f"Spring: {fallback_reason}; using all-static fake dynamic masks for {scene}"
+            )
+            self._missing_mask_warned.add(scene)
+        height, width = image_shape
+        return torch.zeros((num_frames, height, width), dtype=torch.float32)
         
+    def item_weights(self) -> list[float]:
+        """Number of distinct view-sampler windows per scene (start positions).
+
+        Mirrors ViewSamplerUniform.sample: start in [0, max(N - gap*ncv - 1, 1)).
+        """
+        sampler_cfg = getattr(self.view_sampler, "cfg", None)
+        gap = getattr(sampler_cfg, "gap", 1)
+        ncv = self.view_sampler.num_context_views
+        weights = []
+        for i in range(len(self.scene_ids)):
+            n = len(self.scenes[self.scene_ids[i]])
+            weights.append(float(max(n - gap * ncv - 1, 1)))
+        return weights
+
+    def load_motion_maps(self, scene: str, indices: Tensor, depth_scale: float) -> dict[str, Tensor]:
+        """Precomputed motion maps of the given frames, in pose units."""
+        root = Path(self.cfg.motion_root) / scene
+        idx = indices.numpy()
+        depth = torch.from_numpy(np.load(root / "depth.npy", mmap_mode="r")[idx].astype(np.float32))
+        flow = torch.from_numpy(np.load(root / "flow.npy", mmap_mode="r")[idx].astype(np.float32))
+        depth_next = torch.from_numpy(np.load(root / "depth_next.npy", mmap_mode="r")[idx].astype(np.float32))
+        mask = torch.from_numpy(np.load(root / "mask.npy", mmap_mode="r")[idx].astype(np.float32))
+        valid = torch.from_numpy(np.load(root / "valid.npy", mmap_mode="r")[idx].astype(np.float32))
+        return {
+            "depth": depth / depth_scale,
+            "motion_flow": flow,
+            "motion_depth_next": depth_next / depth_scale,
+            "motion_mask": mask,
+            "motion_valid": valid,
+            "mask": mask,
+        }
+
     def shuffle(self, lst: list) -> list:
         indices = torch.randperm(len(lst))
         return [lst[x] for x in indices]
@@ -208,8 +305,11 @@ class DatasetSpring(Dataset):
         extrinsics = torch.tensor(extrinsics, dtype=torch.float32)
         intrinsics = torch.tensor(intrinsics, dtype=torch.float32)
 
-        intrinsic = [[0.4836, 0.0000, 0.5000],[0.0000, 0.8597, 0.5000],[0.0000, 0.0000, 1.0000]] # re10K intrinsic
-        intrinsics = torch.tensor(intrinsic, dtype=torch.float32).unsqueeze(0).repeat(intrinsics.shape[0], 1, 1)
+        if self.cfg.force_davis_intrinsics:
+            intrinsics = davis_intrinsics_like(intrinsics)
+        else:
+            intrinsic = [[0.4836, 0.0000, 0.5000],[0.0000, 0.8597, 0.5000],[0.0000, 0.0000, 1.0000]] # re10K intrinsic
+            intrinsics = torch.tensor(intrinsic, dtype=torch.float32).unsqueeze(0).repeat(intrinsics.shape[0], 1, 1)
         
         # Calculate masks from flows and depths
         # flows = self.load_flows(example)
@@ -235,8 +335,16 @@ class DatasetSpring(Dataset):
         # last_frame_mask = torch.full_like(masks[:1], -1.0)
         # masks = torch.cat([masks, last_frame_mask], dim=0)  # [T-1, H, W] -> [T, H, W]
 
-        # Load preprocessed masks
-        masks = self.load_masks(scene, self.cfg.mask_root)
+        # Load the preprocessed dynamic masks (all-static fallback if absent).
+        # With motion_root the GT rigidmap replaces them (attached below).
+        masks = None
+        if self.cfg.motion_root is None:
+            masks = self.load_masks(
+                scene,
+                self.cfg.mask_root,
+                num_frames=len(example),
+                image_shape=tuple(self.cfg.input_image_shape),
+            )
 
         try:
             context_indices, target_indices, overlap = self.view_sampler.sample(
@@ -269,12 +377,12 @@ class DatasetSpring(Dataset):
         # Resize the world to make the baseline 1.
         context_extrinsics = extrinsics[context_indices]
         if self.cfg.make_baseline_1:
-            a = context_extrinsics[0, :3, 3]              # 기준(0번) 위치
-            b_all = context_extrinsics[1:, :3, 3]         # 나머지 모든 extrinsics 위치들
+            a = context_extrinsics[0, :3, 3]
+            b_all = context_extrinsics[1:, :3, 3]
 
             diff = b_all - a                              # shape: (N-1, 3)
-            norms = diff.norm(dim=1)                      # 각 거리의 norm
-            scale = norms.max()                           # 그 중 max
+            norms = diff.norm(dim=1)
+            scale = norms.max()
             if scale < self.cfg.baseline_min:
                 # Check if ALL cameras (context + target) are perfectly static
                 all_positions = extrinsics[:, :3, 3]
@@ -305,31 +413,41 @@ class DatasetSpring(Dataset):
 
         if torch.isnan(extrinsics).any() or torch.isinf(extrinsics).any():
             raise Exception("encounter nan or inf in input poses")
+
     
-        context_masks = masks[context_indices]
-        target_masks = masks[target_indices]
+        if masks is not None:
+            context_extra = {"mask": masks[context_indices]}
+            target_extra = {"mask": masks[target_indices]}
+        else:
+            context_extra = self.load_motion_maps(scene, context_indices, float(scale))
+            target_extra = self.load_motion_maps(scene, target_indices, float(scale))
+            # A frame whose successor is not in this batch gets no flow target.
+            batch_frames = set(context_indices.tolist()) | set(target_indices.tolist())
+            for extra, idx in ((context_extra, context_indices), (target_extra, target_indices)):
+                has_next = torch.tensor([(i + 1) in batch_frames for i in idx.tolist()])
+                extra["motion_valid"] = extra["motion_valid"] * has_next[:, None, None].float()
 
         example = {
             "context": {
                 "extrinsics": extrinsics[context_indices],
                 "intrinsics": intrinsics[context_indices],
                 "image": context_images,
-                "near": self.get_bound("near", len(context_indices)) / scale,
-                "far": self.get_bound("far", len(context_indices)) / scale,
+                "near": self.get_scaled_bound("near", len(context_indices), scale),
+                "far": self.get_scaled_bound("far", len(context_indices), scale),
                 "index": context_indices,
                 "camera": torch.zeros_like(context_indices),  # dummy
-                "mask": context_masks,
+                **context_extra,
                 # "overlap": overlap,
             },
             "target": {
                 "extrinsics": extrinsics[target_indices],
                 "intrinsics": intrinsics[target_indices],
                 "image": target_images,
-                "near": self.get_bound("near", len(target_indices)) / scale,
-                "far": self.get_bound("far", len(target_indices)) / scale,
+                "near": self.get_scaled_bound("near", len(target_indices), scale),
+                "far": self.get_scaled_bound("far", len(target_indices), scale),
                 "index": target_indices,
                 "camera": torch.zeros_like(target_indices),  # dummy
-                "mask": target_masks,
+                **target_extra,
             },
             "scene": "spring_"+scene,
             "dataset_name": self.cfg.name,
@@ -338,7 +456,7 @@ class DatasetSpring(Dataset):
             example = apply_augmentation_shim(example)
         
         example = apply_crop_shim(example, (patchsize[0] * 14, patchsize[1] * 14))
-        return example
+        return maybe_apply_davis_intrinsics(example, self.cfg.force_davis_intrinsics)
         
     def __getitem__(self, index: int) -> dict:
         num_context_views = self.view_sampler.num_context_views
@@ -348,7 +466,8 @@ class DatasetSpring(Dataset):
         try:
             return self.getitem(index, num_context_views, (patchsize_h, patchsize_w))
         except Exception as e:
-            print(f"Error: {e}")
+            scene = self.scene_ids.get(index, index)
+            print(f"Spring: skipping scene {scene}: {type(e).__name__}: {e}")
             # traceback.print_exc()
             index = np.random.randint(len(self))
             return self.__getitem__(index)
@@ -387,6 +506,11 @@ class DatasetSpring(Dataset):
         w2c = repeat(torch.eye(4, dtype=torch.float32), "h w -> b h w", b=b).clone()
         w2c[:, :3] = rearrange(poses[:, 6:], "b (h w) -> b h w", h=3, w=4)
         return w2c.inverse(), intrinsics
+
+    def get_scaled_bound(self, bound, num_views, baseline):
+        # Fixed bounds are expressed directly in the normalized rendering frame.
+        value = self.get_bound(bound, num_views)
+        return value / baseline if self.cfg.scale_bounds_with_baseline else value
 
     def get_bound(
         self,

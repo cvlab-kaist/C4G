@@ -6,7 +6,7 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 export PYTHONPATH="${REPO_ROOT}:${PYTHONPATH:-}"
 
 python -u "${SCRIPT_DIR}/evaluation_davis.py" \
-  --precomputed_root "${PRECOMPUTED_ROOT:-/path/to/c4g_precomputed_davis}" \
+  --precomputed_root "${PRECOMPUTED_ROOT:-/path/to/t4gs_precomputed_davis}" \
   --fps "${FPS:-5}" \
   --save_local_outputs \
   --diffsynth_path "${REPO_ROOT}" \

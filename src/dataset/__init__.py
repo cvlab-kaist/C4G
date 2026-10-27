@@ -7,6 +7,7 @@ from ..misc.step_tracker import StepTracker
 from .dataset_re10k import DatasetRE10k, DatasetRE10kCfg, DatasetRE10kCfgWrapper
 from .dataset_spring import DatasetSpring, DatasetSpringCfg, DatasetSpringCfgWrapper
 from .dataset_kubric import DatasetKubric, DatasetKubricCfg, DatasetKubricCfgWrapper
+from .dataset_egoexo4d_mono import DatasetEgoExo4DMono, DatasetEgoExo4DMonoCfg, DatasetEgoExo4DMonoCfgWrapper
 from .types import Stage
 from .view_sampler import get_view_sampler
 
@@ -14,6 +15,7 @@ DATASETS: dict[str, Dataset] = {
     "re10k": DatasetRE10k,
     "spring": DatasetSpring,
     "kubric": DatasetKubric,
+    "egoexo4d_mono": DatasetEgoExo4DMono,
 }
 
 
@@ -21,12 +23,14 @@ DatasetCfgWrapper = (
     DatasetSpringCfgWrapper
     | DatasetKubricCfgWrapper
     | DatasetRE10kCfgWrapper
+    | DatasetEgoExo4DMonoCfgWrapper
 )
 
 DatasetCfg = (
     DatasetRE10kCfg
     | DatasetSpringCfg
     | DatasetKubricCfg
+    | DatasetEgoExo4DMonoCfg
 )
 
 

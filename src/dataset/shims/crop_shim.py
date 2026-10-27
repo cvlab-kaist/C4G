@@ -1,11 +1,13 @@
 import numpy as np
 import torch
+import torch.nn.functional as F
 from einops import rearrange
 from jaxtyping import Float
 from PIL import Image
 from torch import Tensor
 
 from ..types import AnyExample, AnyViews
+from .motion_fields import FLOW_MAP_KEYS, SCALAR_MAP_KEYS
 
 
 def rescale(
@@ -75,13 +77,69 @@ def rescale_and_crop(
     return center_crop(images, intrinsics, shape)
 
 
+def rescale_and_crop_depth(
+    depth: Float[Tensor, "*#batch h_in w_in"],
+    shape: tuple[int, int],
+) -> Float[Tensor, "*#batch h_out w_out"]:
+    """Apply the same rescale + center crop as rescale_and_crop to a depth map.
+
+    Nearest-neighbour resampling keeps depth values and the zero (= invalid)
+    markers intact instead of blending them.
+    """
+    *batch, h_in, w_in = depth.shape
+    h_out, w_out = shape
+    scale_factor = max(h_out / h_in, w_out / w_in)
+    h_scaled = round(h_in * scale_factor)
+    w_scaled = round(w_in * scale_factor)
+    x = depth.reshape(-1, 1, h_in, w_in)
+    x = F.interpolate(x, size=(h_scaled, w_scaled), mode="nearest")
+    row = (h_scaled - h_out) // 2
+    col = (w_scaled - w_out) // 2
+    x = x[:, 0, row : row + h_out, col : col + w_out]
+    return x.reshape(*batch, h_out, w_out)
+
+
+def rescale_and_crop_flow(
+    flow: Float[Tensor, "*#batch h_in w_in 2"],
+    shape: tuple[int, int],
+) -> Float[Tensor, "*#batch h_out w_out 2"]:
+    """Apply the image rescale + center crop to a (dx, dy) pixel flow map.
+
+    The flow values are scaled by the same factors as the pixel grid; a center
+    crop does not change displacements.
+    """
+    *batch, h_in, w_in, _ = flow.shape
+    h_out, w_out = shape
+    scale_factor = max(h_out / h_in, w_out / w_in)
+    h_scaled = round(h_in * scale_factor)
+    w_scaled = round(w_in * scale_factor)
+    x = flow.reshape(-1, h_in, w_in, 2).permute(0, 3, 1, 2)
+    x = F.interpolate(x, size=(h_scaled, w_scaled), mode="nearest")
+    row = (h_scaled - h_out) // 2
+    col = (w_scaled - w_out) // 2
+    x = x[:, :, row : row + h_out, col : col + w_out].permute(0, 2, 3, 1)
+    x = x * torch.tensor(
+        [w_scaled / w_in, h_scaled / h_in], dtype=x.dtype, device=x.device
+    )
+    return x.reshape(*batch, h_out, w_out, 2)
+
+
 def apply_crop_shim_to_views(views: AnyViews, shape: tuple[int, int]) -> AnyViews:
     images, intrinsics = rescale_and_crop(views["image"], views["intrinsics"], shape)
-    return {
+    cropped = {
         **views,
         "image": images,
         "intrinsics": intrinsics,
     }
+    # Per-pixel supervision maps follow the images (each from its own
+    # resolution, so precomputed maps may already be stored pre-cropped).
+    for key in SCALAR_MAP_KEYS:
+        if key in views and views[key] is not None:
+            cropped[key] = rescale_and_crop_depth(views[key], shape)
+    for key in FLOW_MAP_KEYS:
+        if key in views and views[key] is not None:
+            cropped[key] = rescale_and_crop_flow(views[key], shape)
+    return cropped
 
 
 def apply_crop_shim(example: AnyExample, shape: tuple[int, int]) -> AnyExample:

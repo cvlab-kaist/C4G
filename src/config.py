@@ -19,6 +19,9 @@ class CheckpointingCfg:
     every_n_train_steps: int
     save_top_k: int
     save_weights_only: bool
+    # Also keep a fixed-name `last.ckpt` (Lightning save_last) next to the
+    # step-named checkpoints, so the latest state has a stable path.
+    save_last: bool = False
 
 
 @dataclass
@@ -34,6 +37,7 @@ class TrainerCfg:
     gradient_clip_val: int | float | None
     num_nodes: int = 1
     accumulate_grad_batches: int = 1
+    num_sanity_val_steps: int = 2
 
 
 @dataclass
@@ -50,6 +54,7 @@ class RootCfg:
     test: TestCfg
     train: TrainCfg
     seed: int
+    force_davis_intrinsics: bool = False
 
 
 TYPE_HOOKS = {

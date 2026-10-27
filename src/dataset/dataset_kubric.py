@@ -24,6 +24,7 @@ import os
 
 import numpy as np
 import torch
+import torch.nn.functional as F
 import torchvision.transforms as tf
 from einops import repeat
 from jaxtyping import Float
@@ -33,6 +34,7 @@ from torch import Tensor
 from torch.utils.data import Dataset
 
 from .dataset import DatasetCfgCommon
+from .intrinsics import davis_intrinsics_like, maybe_apply_davis_intrinsics
 from .shims.augmentation_shim import apply_augmentation_shim
 from .shims.crop_shim import apply_crop_shim
 from .types import Stage
@@ -56,6 +58,20 @@ class DatasetKubricCfg(DatasetCfgCommon):
     num_context_timestamps: int = 6
     render_config_include: list[str] | None = None
     val_scenes: list[str] | None = None
+
+    # Share of the mixed training sampler given to this dataset.
+    sample_weight: float = 1.0
+    # Ship GT depth / 2D flow / next-frame depth / dynamic mask for every view
+    # (see shims/motion_fields.py); consumed by the motion losses.
+    motion_fields: bool = False
+    # An instance counts as moving at frame t when one of its 3D bbox corners
+    # travels more than this (scene units) to the previous or next frame.
+    motion_instance_threshold: float = 0.02
+    # Also expose the motion mask as the photometric `mask` (LossDynamicMask).
+    photometric_mask: bool = False
+    # Ablation: no all-view timestamp. Context = the one fixed camera at every timestamp (a monocular clip);
+    # targets = the other V-1 cameras at every timestamp (context N, targets N*(V-1)).
+    monocular_context: bool = False
 
 
 @dataclass
@@ -186,6 +202,119 @@ class DatasetKubric(Dataset):
         return self.to_tensor(Image.open(path).convert("RGB"))
 
     # ------------------------------------------------------------------
+    # Motion supervision maps
+    # ------------------------------------------------------------------
+
+    def _load_flow(self, rc: str, scene_id: str, view_name: str, sub_idx: int, direction: str = "forward") -> Tensor:
+        """GT optical flow as [h, w, 2] (dx, dy) in 512-res pixels.
+
+        Kubric writes the flow as an 8-bit RGB png with the (dy, dx) range in
+        data_ranges.json (channel 0 is the row displacement).
+        """
+        vdir = self._view_dir(rc, scene_id, view_name)
+        png = np.asarray(Image.open(os.path.join(vdir, f"{direction}_flow_{sub_idx:05d}.png")), dtype=np.float32)
+        with open(os.path.join(vdir, "data_ranges.json")) as f:
+            rng = json.load(f)[f"{direction}_flow"]
+        flow = png[..., :2] / 255.0 * (rng["max"] - rng["min"]) + rng["min"]
+        return torch.from_numpy(np.ascontiguousarray(flow[..., ::-1]))  # (dy, dx) -> (dx, dy)
+
+    def _load_depth(self, rc: str, scene_id: str, view_name: str, sub_idx: int) -> Tensor:
+        path = os.path.join(self._view_dir(rc, scene_id, view_name), f"depth_{sub_idx:05d}.tiff")
+        d = torch.tensor(np.array(Image.open(path)), dtype=torch.float32)
+        return torch.nan_to_num(d, nan=0.0, posinf=0.0, neginf=0.0)
+
+    def _load_segmentation(self, rc: str, scene_id: str, view_name: str, sub_idx: int) -> Tensor:
+        path = os.path.join(self._view_dir(rc, scene_id, view_name), f"segmentation_{sub_idx:05d}.png")
+        return torch.from_numpy(np.array(Image.open(path)).astype(np.int64))
+
+    @staticmethod
+    def _instance_motion(instances: list[dict], threshold: float) -> np.ndarray:
+        """[num_instances + 1, num_frames] bool: is segmentation id moving at frame t.
+
+        Id 0 is the (static) background. An instance moves at t when a 3D bbox
+        corner travels more than `threshold` between t-1 -> t or t -> t+1, so
+        collision-nudged "static" objects are excluded from the static set too.
+        """
+        num_frames = len(instances[0]["bboxes_3d"]) if instances else 0
+        moving = np.zeros((len(instances) + 1, num_frames), dtype=bool)
+        for k, inst in enumerate(instances):
+            corners = np.asarray(inst["bboxes_3d"], dtype=np.float64)  # [T, 8, 3]
+            step = np.abs(corners[1:] - corners[:-1]).max(axis=(1, 2)) > threshold  # [T-1]
+            moving[k + 1, :-1] |= step
+            moving[k + 1, 1:] |= step
+        return moving
+
+    @staticmethod
+    def _sample_map(img: Tensor, coords: Tensor, edge_tol: float = 0.05) -> tuple[Tensor, Tensor]:
+        """Sample depth img [h, w] at continuous pixel coords [h, w, 2].
+
+        Nearest-neighbour value; a sample is invalid outside the image or where
+        the four surrounding pixels disagree by more than `edge_tol` (relative),
+        i.e. on a depth discontinuity, where any resampling would mix surfaces.
+        """
+        h, w = img.shape
+        grid = torch.stack(
+            [2.0 * coords[..., 0] / w - 1.0, 2.0 * coords[..., 1] / h - 1.0], dim=-1
+        )[None]
+        nearest = F.grid_sample(img[None, None], grid, mode="nearest", padding_mode="zeros", align_corners=False)[0, 0]
+        x = coords[..., 0] - 0.5
+        y = coords[..., 1] - 0.5
+        x0 = x.floor().long().clamp(0, w - 1)
+        y0 = y.floor().long().clamp(0, h - 1)
+        x1 = (x0 + 1).clamp(max=w - 1)
+        y1 = (y0 + 1).clamp(max=h - 1)
+        corners = torch.stack([img[y0, x0], img[y0, x1], img[y1, x0], img[y1, x1]])
+        spread = (corners.max(0).values - corners.min(0).values) / nearest.clamp(min=1e-6)
+        inside = (grid[0].abs() <= 1.0).all(dim=-1) & (spread <= edge_tol)
+        return nearest, inside
+
+    def _load_motion_fields(
+        self,
+        rc: str,
+        scene_id: str,
+        specs: list[tuple[str, int]],
+        batch_timestamps: set[int],
+        instances: list[dict],
+        depth_scale: float,
+    ) -> dict[str, Tensor]:
+        """Per-view depth / flow / next depth / dynamic mask at 512x512."""
+        moving = self._instance_motion(instances, self.cfg.motion_instance_threshold)
+        num_total = self.cfg.num_temporal_frames
+        H = W = 512
+        yy, xx = torch.meshgrid(
+            torch.arange(H, dtype=torch.float32), torch.arange(W, dtype=torch.float32), indexing="ij"
+        )
+        pixel_centers = torch.stack([xx + 0.5, yy + 0.5], dim=-1)
+
+        def _one(spec):
+            vn, ts = spec
+            depth = self._load_depth(rc, scene_id, vn, ts)
+            seg = self._load_segmentation(rc, scene_id, vn, ts)
+            mask = torch.from_numpy(moving[:, ts])[seg.clamp(max=moving.shape[0] - 1)].float()
+            has_next = (ts + 1) in batch_timestamps and ts + 1 < num_total
+            if has_next:
+                flow = self._load_flow(rc, scene_id, vn, ts, "forward")
+                depth_next_full = self._load_depth(rc, scene_id, vn, ts + 1)
+                depth_next, inside = self._sample_map(depth_next_full, pixel_centers + flow)
+                valid = (inside & (depth > 0) & (depth_next > 0)).float()
+            else:
+                flow = torch.zeros(H, W, 2)
+                depth_next = torch.zeros(H, W)
+                valid = torch.zeros(H, W)
+            return depth / depth_scale, flow, depth_next / depth_scale, mask, valid
+
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            results = list(executor.map(_one, specs))
+        depth, flow, depth_next, mask, valid = (torch.stack(x) for x in zip(*results))
+        return {
+            "depth": depth,
+            "motion_flow": flow,
+            "motion_depth_next": depth_next,
+            "motion_mask": mask,
+            "motion_valid": valid,
+        }
+
+    # ------------------------------------------------------------------
     # Dataset interface
     # ------------------------------------------------------------------
 
@@ -223,6 +352,8 @@ class DatasetKubric(Dataset):
 
         # One random timestamp gets all V views; the rest get 1 random view
         mv_idx = random.randint(0, N - 1)  # index into timestamps
+        if self.cfg.monocular_context:
+            mv_idx = -1  # no all-view timestamp
         fixed_ctx_view = random.randint(0, num_views - 1)
 
         # Pre-load metadata per view
@@ -292,6 +423,9 @@ class DatasetKubric(Dataset):
         ctx_int = torch.from_numpy(np.stack(ctx_int_list))
         tgt_ext = torch.from_numpy(np.stack(tgt_ext_list))
         tgt_int = torch.from_numpy(np.stack(tgt_int_list))
+        if self.cfg.force_davis_intrinsics:
+            ctx_int = davis_intrinsics_like(ctx_int)
+            tgt_int = davis_intrinsics_like(tgt_int)
 
         # ---- Normalization ----
         all_ext = torch.cat([ctx_ext, tgt_ext], dim=0)
@@ -318,16 +452,28 @@ class DatasetKubric(Dataset):
         if self.cfg.relative_pose:
             all_ext = camera_normalization(all_ext[0:1], all_ext)
 
+        depth_scale = float(scale)
         if self.cfg.rescale_to_1cube:
             scene_scale = torch.max(torch.abs(all_ext[:n_ctx, :3, 3]))
             if scene_scale > 1e-8:
                 all_ext[:, :3, 3] /= scene_scale
+                depth_scale *= float(scene_scale)
 
         if torch.isnan(all_ext).any() or torch.isinf(all_ext).any():
             raise Exception("NaN or Inf in extrinsics")
 
         ctx_ext = all_ext[:n_ctx]
         tgt_ext = all_ext[n_ctx:]
+
+        ctx_motion, tgt_motion = {}, {}
+        if self.cfg.motion_fields:
+            instances = view_meta[self.ALL_VIEWS[0]][0]["instances"]
+            batch_ts = set(timestamps)
+            ctx_motion = self._load_motion_fields(rc, scene_id, ctx_img_specs, batch_ts, instances, depth_scale)
+            tgt_motion = self._load_motion_fields(rc, scene_id, tgt_img_specs, batch_ts, instances, depth_scale)
+            if self.cfg.photometric_mask:
+                ctx_motion["mask"] = ctx_motion["motion_mask"]
+                tgt_motion["mask"] = tgt_motion["motion_mask"]
 
         ctx_index = torch.tensor(ctx_ts_list, dtype=torch.int64)
         tgt_index = torch.tensor(tgt_ts_list, dtype=torch.int64)
@@ -344,6 +490,7 @@ class DatasetKubric(Dataset):
                 "far": self.get_bound("far", n_ctx) / scale,
                 "index": ctx_index,
                 "camera": ctx_camera,
+                **ctx_motion,
             },
             "target": {
                 "extrinsics": tgt_ext,
@@ -353,6 +500,7 @@ class DatasetKubric(Dataset):
                 "far": self.get_bound("far", n_tgt) / scale,
                 "index": tgt_index,
                 "camera": tgt_camera,
+                **tgt_motion,
             },
             "scene": f"kubric_{rc}_{scene_id}",
             "dataset_name": self.cfg.name,
@@ -361,7 +509,8 @@ class DatasetKubric(Dataset):
         if self.stage == "train" and self.cfg.augment:
             example = apply_augmentation_shim(example)
 
-        return apply_crop_shim(example, tuple(self.cfg.input_image_shape))
+        example = apply_crop_shim(example, tuple(self.cfg.input_image_shape))
+        return maybe_apply_davis_intrinsics(example, self.cfg.force_davis_intrinsics)
 
     # ------------------------------------------------------------------
     # I/O helpers

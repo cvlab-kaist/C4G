@@ -4,3 +4,4 @@ augment: true
 background_color: [0.0, 0.0, 0.0]
 overfit_to_scene: null
 skip_bad_shape: true
+force_davis_intrinsics: false

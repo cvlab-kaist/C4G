@@ -11,3 +11,4 @@ class DatasetCfgCommon:
     cameras_are_circular: bool
     overfit_to_scene: str | None
     view_sampler: ViewSamplerCfg
+    force_davis_intrinsics: bool

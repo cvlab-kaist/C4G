@@ -12,9 +12,6 @@ from diffsynth.diffusion import *
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
-# NOTE: 학습 시엔 데이터셋의 pre-computed caption (data["caption"]) 을 쓰지만,
-#       eval (e.g., iphone) 에선 caption 이 없으므로 model_wrapper 가 이 클래스를
-#       monkey-patch 해서 사용함. 따라서 클래스 정의는 유지.
 class QwenVLCaptioner:
     """Qwen3-VL based video captioner. Generates text captions from video frames."""
 
@@ -135,7 +132,6 @@ class WanTrainingModule(DiffusionTrainingModule):
         self.max_timestep_boundary = max_timestep_boundary
         self.min_timestep_boundary = min_timestep_boundary
 
-        # Caption 은 데이터셋에서 pre-computed 로 제공됨 (data["caption"]).
         # self.captioner = QwenVLCaptioner(
         #     "Qwen/Qwen3-VL-8B-Instruct", device=device,
         # )
@@ -197,7 +193,7 @@ class WanTrainingModule(DiffusionTrainingModule):
                 torch.cuda.synchronize()
 
         _sync(); t0 = time.perf_counter()
-        if inputs is None: inputs = self.get_pipeline_inputs(data)   # Qwen captioner 포함
+        if inputs is None: inputs = self.get_pipeline_inputs(data)
         _sync(); t_cap = time.perf_counter()
         inputs = self.transfer_data_to_device(inputs, self.pipe.device, self.pipe.torch_dtype)
         _sync(); t_xfer = time.perf_counter()
@@ -224,7 +220,6 @@ class WanTrainingModule(DiffusionTrainingModule):
 
     @torch.no_grad()
     def predict_rendered_video(self, data):
-        """gt_video와 모델 단일 스텝 x0 예측을 (T, H, W, 3) uint8로 반환."""
         pipe = self.pipe
         inputs = self.get_pipeline_inputs(data)
         prompt = inputs[1].get("prompt", "")  # inputs_posi
@@ -249,7 +244,6 @@ class WanTrainingModule(DiffusionTrainingModule):
             noise_pred = pipe.model_fn(**models, **inputs_shared, **inputs_posi, timestep=timestep)
             latents = pipe.scheduler.step(noise_pred, t, latents)
 
-        # training mode로 복원
         pipe.scheduler.set_timesteps(1000, training=True)
 
         # VAE decode — view1 (keyframes) was encoded frame-by-frame, view2 (4k+1) as chunk
@@ -290,12 +284,11 @@ class WanTrainingModule(DiffusionTrainingModule):
         _ones = (_mask > 0.5).nonzero(as_tuple=True)[0]
         T_vace = int(_ones[0].item()) if len(_ones) > 0 else vace_video.shape[0] // 2
 
-        # view2는 4k+1 padding 포함 → target_idx_orig 길이로 trim
         target_len = int(len(data["target_idx_orig"]))
         rendered_frames = tensor_to_uint8(vace_video[T_vace:T_vace + target_len])   # rendered (blurry) — view2
         context_frames  = tensor_to_uint8(vace_video[:T_vace])                       # context keyframes — view1
         gt_frames_view1 = tensor_to_uint8(gt_video[:T_vace])                         # view1 = first half
-        gt_frames_view2 = tensor_to_uint8(gt_video[T_vace:T_vace + target_len])      # view2 = second half (padding 제외)
+        gt_frames_view2 = tensor_to_uint8(gt_video[T_vace:T_vace + target_len])
 
         return rendered_frames, gt_frames_view1, gt_frames_view2, pred_frames, context_frames, prompt
 
@@ -309,12 +302,11 @@ class WandbModelLogger(ModelLogger):
         self.log_video_steps = log_video_steps
         self.top_k_ckpts = top_k_ckpts
         self._ckpt_heap = []   # min-heap by psnr
-        self._all_ckpts = []   # 저장된 모든 ckpt 경로
+        self._all_ckpts = []
         self._last_ckpt_path = None
         self._wandb_initialized = False
 
     def _cleanup_ckpts(self):
-        """top_k + last step만 남기고 나머지 삭제 (optim.pt 도 동반 삭제)."""
         top_k_paths = {path for _, _, path in self._ckpt_heap}
         keep = top_k_paths | ({self._last_ckpt_path} if self._last_ckpt_path else set())
         for path in self._all_ckpts:
@@ -329,11 +321,9 @@ class WandbModelLogger(ModelLogger):
 
         do_val = self.use_wandb and (self.num_steps % self.log_video_steps == 0)
 
-        # save_model은 모든 rank가 함께 호출해야 함 (wait_for_everyone 때문)
         if do_val:
             ckpt_name = f"val-step-{self.num_steps}.safetensors"
             self.save_model(accelerator, model, ckpt_name)
-            # optimizer/scheduler state 저장 → preempt 재개시 Adam moment 연속
             optimizer = kwargs.get("optimizer")
             scheduler = kwargs.get("scheduler")
             if accelerator.is_main_process and optimizer is not None:
@@ -356,7 +346,6 @@ class WandbModelLogger(ModelLogger):
                 wandb.init(project=self.wandb_project, name=self.wandb_name)
                 self._wandb_initialized = True
 
-            # 한 step당 wandb.log를 한 번만 호출 (step= 키워드로 x축 고정)
             log_dict = {}
             loss = kwargs.get("loss")
             if loss is not None:
@@ -368,23 +357,19 @@ class WandbModelLogger(ModelLogger):
                 if data is not None:
                     rendered_frames, gt_frames_view1, gt_frames_view2, pred_frames, context_frames, prompt = accelerator.unwrap_model(model).predict_rendered_video(data)
 
-                    # 동적 길이: dataset이 알려준 원본 (un-padded) frame counts
                     view1_len = int(len(data["context_idx_orig"]))   # keyframe count
                     view2_len = int(len(data["target_idx_orig"]))    # rendered frame count (no pad)
 
-                    # raw context/rendered/gt_view2는 4k+1 패딩 포함 → view2_len으로 잘라 패딩 제거
                     rendered_frames = rendered_frames[:view2_len]
                     gt_frames_view2 = gt_frames_view2[:view2_len]
                     context_frames  = context_frames[:view1_len]
                     gt_frames_view1 = gt_frames_view1[:view1_len]
 
-                    # pred_frames 구조: 앞 view1_len = view1 pred, 뒤 view2_len = view2 pred
                     gt_frames_v       = gt_frames_view2
                     pred_frames_v     = pred_frames[view1_len:view1_len + view2_len]
                     rendered_frames_v = rendered_frames
                     context_frames_v  = context_frames
 
-                    # PSNR / SSIM 계산 (gt vs pred, uint8 기준)
                     from skimage.metrics import structural_similarity as ssim_fn
                     mse_vals, ssim_vals = [], []
                     for g, p in zip(gt_frames_v, pred_frames_v):
@@ -397,10 +382,8 @@ class WandbModelLogger(ModelLogger):
 
                     ckpt_path = os.path.join(self.output_path, ckpt_name)
 
-                    # last 업데이트
                     self._last_ckpt_path = ckpt_path
 
-                    # top-k heap 관리
                     if len(self._ckpt_heap) < self.top_k_ckpts:
                         heapq.heappush(self._ckpt_heap, (psnr, self.num_steps, ckpt_path))
                     elif psnr > self._ckpt_heap[0][0]:
@@ -408,13 +391,11 @@ class WandbModelLogger(ModelLogger):
 
                     self._cleanup_ckpts()
 
-                    # wandb 비디오 로깅: rendered | gt | pred 3단 비교 (view2 전체, 패딩 제거됨)
                     triple = np.stack([
                         np.concatenate([r, g, p], axis=1)
                         for r, g, p in zip(rendered_frames_v, gt_frames_v, pred_frames_v)
                     ])  # (view2_len, H, W*3, C)
                     video_tensor = triple.transpose(0, 3, 1, 2)
-                    # val/view1: context | gt_view1 | pred_view1 (각 view1_len개)
                     pred_frames_view1 = pred_frames[:view1_len]
                     view1_video = np.stack([
                         np.concatenate([c, g, p], axis=1)
@@ -424,7 +405,6 @@ class WandbModelLogger(ModelLogger):
                     pred_all_video = pred_frames.transpose(0, 3, 1, 2)  # (view1_len + view2_len, C, H, W)
 
                     scene_name = data.get("scene", "unknown")
-                    # 비디오는 wandb.log → 워크스페이스 패널에 표시 (key 별 1 panel, step slider).
                     log_dict.update({
                         "val/psnr": psnr,
                         "val/ssim": ssim,
@@ -441,7 +421,6 @@ class WandbModelLogger(ModelLogger):
                             caption=f"step {self.num_steps} | {scene_name} | full pred (view1: 0~{view1_len-1}, view2: {view1_len}~{view1_len + view2_len - 1})",
                         ),
                     })
-                    # 프롬프트는 wandb.run.summary 로 → 매 step 누적 안 됨 (최신 1개만 보존).
                     if wandb.run is not None:
                         wandb.run.summary["val/prompt"] = wandb.Html(
                             f"<p><b>{scene_name}</b><br>{prompt}</p>"
@@ -449,8 +428,6 @@ class WandbModelLogger(ModelLogger):
 
             if log_dict:
                 log_dict["step"] = self.num_steps
-                # step= 키워드를 넘기면 wandb 내부 x-axis 가 self.num_steps 로 고정되어
-                # resume 시에도 loss/psnr/ssim 차트가 실제 step 부터 이어서 그려진다.
                 wandb.log(log_dict, step=self.num_steps)
 
 

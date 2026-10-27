@@ -1,4 +1,4 @@
-# PyTorch CUDA wheels for the l40s_anysplat release environment.
+# PyTorch CUDA wheels for the t4gs environment.
 --extra-index-url https://download.pytorch.org/whl/cu121
 torch==2.2.0+cu121
 torchvision==0.17.0+cu121

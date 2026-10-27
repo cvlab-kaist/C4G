@@ -3,6 +3,7 @@ from jaxtyping import Float
 from torch import Tensor
 
 from ..types import AnyExample, AnyViews
+from .motion_fields import FLOW_MAP_KEYS, SCALAR_MAP_KEYS
 
 
 def reflect_extrinsics(
@@ -14,11 +15,21 @@ def reflect_extrinsics(
 
 
 def reflect_views(views: AnyViews) -> AnyViews:
-    return {
+    reflected = {
         **views,
         "image": views["image"].flip(-1),
         "extrinsics": reflect_extrinsics(views["extrinsics"]),
     }
+    # Per-pixel supervision maps must be mirrored with the images.
+    for key in SCALAR_MAP_KEYS:
+        if key in views and views[key] is not None:
+            reflected[key] = views[key].flip(-1)
+    for key in FLOW_MAP_KEYS:
+        if key in views and views[key] is not None:
+            flow = views[key].flip(-2)  # [..., h, w, 2]: mirror columns
+            flow = torch.cat([-flow[..., :1], flow[..., 1:]], dim=-1)  # dx -> -dx
+            reflected[key] = flow
+    return reflected
 
 
 def apply_augmentation_shim(

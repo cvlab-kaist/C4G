@@ -53,16 +53,21 @@ class EncoderVGGTCfg:
     gaussian_adapter: GaussianAdapterCfg
     opacity_mapping: OpacityMappingCfg
     num_gaussians: int = 2048
-    input_mean: tuple[float, float, float] = (0.5, 0.5, 0.5)
-    input_std: tuple[float, float, float] = (0.5, 0.5, 0.5)
+    input_mean: tuple[float, float, float] | list[float] = (0.5, 0.5, 0.5)
+    input_std: tuple[float, float, float] | list[float] = (0.5, 0.5, 0.5)
     pretrained_weights: str = ""
     freeze_backbone: bool = False
     decoder_depth: int = 2
     gaussians_per_token: int = 1
+    gaussian_token_ablation: Literal["none", "first1024", "duplicate_noise"] = "none"
+    gaussian_token_noise_std: float = 1e-4
+    gaussian_token_noise_seed: int = 1234
     timestamp_embedding: bool = True
+    timestamp_embedding_type: Optional[str] = "sinusoidal"
     sinusoidal_embedding_dim: Optional[int] = 256
     gradient_checkpoint: bool = True
     sinusoidal_period: Optional[int] = 10000
+    normalize_type: Optional[str] = "target_1"
 
 
 class EncoderVGGT(Encoder[EncoderVGGTCfg]):
@@ -79,8 +84,9 @@ class EncoderVGGT(Encoder[EncoderVGGTCfg]):
         self.patch_size = self.backbone.aggregator.patch_size
         self.raw_gs_dim = 3 + 1 + self.gaussian_adapter.d_in
 
-        self.dpt_head = DPTHead(2048) if 'vggt' in cfg.backbone.name else None
-        freeze_all_params([self.dpt_head])
+        self.dpt_head = DPTHead(2048) if cfg.backbone.name == "vggt_multi" else None
+        if self.dpt_head is not None:
+            freeze_all_params([self.dpt_head])
         if hasattr(self.backbone, 'camera_head'):
             del self.backbone.camera_head, self.backbone.point_head, self.backbone.depth_head, self.backbone.track_head
 
@@ -151,10 +157,12 @@ class EncoderVGGT(Encoder[EncoderVGGTCfg]):
         else:
             dec, shape, patch_start_idx = self.backbone(context, return_views=False)
             
+        vis_depth = None
         with torch.amp.autocast('cuda', enabled=False):
-            with torch.no_grad():
-                res = self.dpt_head(dec, context['image'], patch_start_idx)
-                vis_depth = res[0][..., -1]
+            if self.dpt_head is not None:
+                with torch.no_grad():
+                    res = self.dpt_head(dec, context['image'], patch_start_idx)
+                    vis_depth = res[0][..., -1]
             
         dec_feat = dec[-1][:, :, patch_start_idx:]
         b, v, n, d = dec_feat.shape
@@ -173,8 +181,15 @@ class EncoderVGGT(Encoder[EncoderVGGTCfg]):
                 attn_save_idx = random.randint(0, len(target_timestamps) - 1)
             else:
                 attn_save_idx = -1
+            shared_gaussians = None
             for i, target_timestamp in enumerate(target_timestamps):
                 t_idx = target_timestamp.item()
+                # Without a timestamp embedding the decoder input does not depend on the query time, so every
+                # timestamp would decode the same Gaussians: decode once and share the result. The gradient is
+                # identical to decoding each timestamp separately (the branches were copies of one another).
+                if not self.cfg.timestamp_embedding and shared_gaussians is not None:
+                    gaussians_per_timestamp[t_idx] = shared_gaussians
+                    continue
                 do_save_attn = save_attn_for_first and (i == attn_save_idx) and (not self.training)
 
                 if self.training:
@@ -201,10 +216,13 @@ class EncoderVGGT(Encoder[EncoderVGGTCfg]):
                         means, covs, harmonics, opacs, scales, rots = result
 
                 gaussians_per_timestamp[t_idx] = Gaussians(means, covs, harmonics, opacs, scales, rots)
+                if not self.cfg.timestamp_embedding:
+                    shared_gaussians = gaussians_per_timestamp[t_idx]
 
             # Dump visualizations if needed.
             if visualization_dump is not None:
-                visualization_dump['depth'] = vis_depth.unsqueeze(-1).unsqueeze(-1)
+                if vis_depth is not None:
+                    visualization_dump['depth'] = vis_depth.unsqueeze(-1).unsqueeze(-1)
                 visualization_dump["scales"] = None
                 visualization_dump["rotations"] = None
                 visualization_dump["means"] = None
@@ -220,7 +238,25 @@ class EncoderVGGT(Encoder[EncoderVGGTCfg]):
             ctx_ts = repeat(context_index, 'b v -> (b v n)', n=n)
             tgt_ts = repeat(target_timestamp, ' -> (b n)', b=b, n=self.cfg.num_gaussians)
             timesteps = torch.cat((ctx_ts, tgt_ts), dim=0)
-            rel_timesteps = (timesteps - ctx_ts.min()) / (tgt_ts.max() - ctx_ts.min() + 1e-8)
+            if self.cfg.normalize_type == "relative":
+                # subtraction keeps int64; embedding expects Float[Tensor]
+                rel_timesteps = (timesteps - target_timestamp).float()
+            elif self.cfg.normalize_type == "absolute":
+                # Ablation counterpart of "relative": same frame units, anchored at the first context frame
+                # instead of the query time, so the query time enters only through its own token.
+                rel_timesteps = (timesteps - ctx_ts.min()).float()
+            elif self.cfg.normalize_type == "target_1":
+                rel_timesteps = (timesteps - ctx_ts.min()) / (tgt_ts.max() - ctx_ts.min() + 1e-8)
+            elif self.cfg.normalize_type == "normalize":
+                rel_timesteps = (timesteps - ctx_ts.min()) / (ctx_ts.max() - ctx_ts.min() + 1e-8)
+            elif self.cfg.normalize_type == "normalize_pi":
+                rel_timesteps = (timesteps - ctx_ts.min()) * 2 * 3.14 / (ctx_ts.max() - ctx_ts.min() + 1e-8)
+            elif self.cfg.normalize_type == "normalize_1000":
+                rel_timesteps = (timesteps - ctx_ts.min()) * 1000.0 / (ctx_ts.max() - ctx_ts.min() + 1e-8)
+            elif self.cfg.normalize_type == "none":
+                rel_timesteps = timesteps.float()
+            else:
+                raise ValueError(f"Unknown normalize_type: {self.cfg.normalize_type}")
             timestep_emb = self.time_embedding(rel_timesteps).to(device)
             for m in self.time_mlp:
                 timestep_emb = m(timestep_emb)
@@ -270,8 +306,8 @@ class EncoderVGGT(Encoder[EncoderVGGTCfg]):
         def data_shim(batch: BatchedExample) -> BatchedExample:
             batch = apply_normalize_shim(
                 batch,
-                self.cfg.input_mean,
-                self.cfg.input_std,
+                tuple(self.cfg.input_mean),
+                tuple(self.cfg.input_std),
             )
 
             return batch

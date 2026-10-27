@@ -43,15 +43,24 @@ __forceinline__ __device__ float ndc2Pix(float v, int S)
 	return ((v + 1.0) * S - 1.0) * 0.5;
 }
 
-__forceinline__ __device__ void getRect(const float2 p, int max_radius, uint2& rect_min, uint2& rect_max, dim3 grid)
+__forceinline__ __device__ void getRect(const float2 p, float max_radius, uint2& rect_min, uint2& rect_max, dim3 grid)
 {
+	// Clamp in floating point before converting to integer tile coordinates.
+	// An overlarge projected radius otherwise has undefined float-to-int
+	// conversion behavior and can wrap the unsigned tile count.
+	const float min_x = fminf((float)grid.x, fmaxf(0.0f, (p.x - max_radius) / BLOCK_X));
+	const float min_y = fminf((float)grid.y, fmaxf(0.0f, (p.y - max_radius) / BLOCK_Y));
+	const float max_x = fminf(
+		(float)grid.x, fmaxf(0.0f, (p.x + max_radius + BLOCK_X - 1) / BLOCK_X));
+	const float max_y = fminf(
+		(float)grid.y, fmaxf(0.0f, (p.y + max_radius + BLOCK_Y - 1) / BLOCK_Y));
 	rect_min = {
-		min(grid.x, max((int)0, (int)((p.x - max_radius) / BLOCK_X))),
-		min(grid.y, max((int)0, (int)((p.y - max_radius) / BLOCK_Y)))
+		(uint32_t)min_x,
+		(uint32_t)min_y
 	};
 	rect_max = {
-		min(grid.x, max((int)0, (int)((p.x + max_radius + BLOCK_X - 1) / BLOCK_X))),
-		min(grid.y, max((int)0, (int)((p.y + max_radius + BLOCK_Y - 1) / BLOCK_Y)))
+		(uint32_t)max_x,
+		(uint32_t)max_y
 	};
 }
 

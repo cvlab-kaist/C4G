@@ -33,6 +33,46 @@ def compute_lpips(
     return value[:, 0, 0, 0]
 
 
+@cache
+def get_lpips_dycheck(device: torch.device) -> LPIPS:
+    # DyCheck uses an AlexNet LPIPS spatial map before masked averaging.
+    return LPIPS(net="alex", spatial=True).eval().to(device)
+
+
+@torch.no_grad()
+def compute_lpips_dycheck(
+    ground_truth: Float[Tensor, "batch channel height width"],
+    predicted: Float[Tensor, "batch channel height width"],
+    visibility: Float[Tensor, "batch 1 height width"],
+) -> Float[Tensor, " batch"]:
+    """DyCheck mLPIPS: mask inputs, then masked-mean the spatial LPIPS map."""
+    if visibility.ndim != 4 or visibility.shape[1] != 1:
+        raise ValueError(
+            "visibility must have shape [batch, 1, height, width], got "
+            f"{tuple(visibility.shape)}"
+        )
+    visibility = visibility.to(dtype=predicted.dtype, device=predicted.device)
+    ground_truth_masked = ground_truth * visibility
+    predicted_masked = predicted * visibility
+    spatial = get_lpips_dycheck(predicted.device).forward(
+        ground_truth_masked,
+        predicted_masked,
+        normalize=True,
+    )
+    if spatial.shape[-2:] != visibility.shape[-2:]:
+        visibility = torch.nn.functional.interpolate(
+            visibility,
+            size=spatial.shape[-2:],
+            mode="nearest",
+        )
+    denominator = visibility.sum(dim=(-3, -2, -1)).clamp_min(1)
+    return (spatial * visibility).sum(dim=(-3, -2, -1)) / denominator
+
+
+# Explicit alias used by iPhone/DyCheck evaluation code.
+compute_lpips_masked = compute_lpips_dycheck
+
+
 @torch.no_grad()
 def compute_ssim(
     ground_truth: Float[Tensor, "batch channel height width"],

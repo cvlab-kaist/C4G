@@ -11,10 +11,7 @@ VIEW_SAMPLERS: dict[str, ViewSampler[Any]] = {
     "uniform": ViewSamplerUniform,
 }
 
-ViewSamplerCfg = (
-    ViewSamplerBoundedCfg
-    | ViewSamplerUniformCfg
-)
+ViewSamplerCfg = ViewSamplerBoundedCfg | ViewSamplerUniformCfg
 
 
 def get_view_sampler(

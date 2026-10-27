@@ -6,12 +6,18 @@ import torch
 from einops import rearrange
 from torch import nn
 
-from .backbone_croco import BackboneCrocoCfg
 from .vggt.vggt import VGGT
 from .croco.misc import fill_default_args, freeze_all_params
 from ....geometry.camera_emb import get_intrinsic_embedding
 
 inf = float('inf')
+
+
+@dataclass
+class BackboneVGGTCfg:
+    name: Literal["vggt_multi"]
+    model: Literal["ViTLarge_BaseDecoder"]  # not read by VGGT; kept so existing configs load unchanged
+
 
 class BackboneVGGT(VGGT):
     """ Two siamese encoders, followed by two decoders.
@@ -19,7 +25,7 @@ class BackboneVGGT(VGGT):
     (hence the asymmetry).
     """
 
-    def __init__(self, cfg: BackboneCrocoCfg, d_in: int, gradient_checkpoint=False) -> None:
+    def __init__(self, cfg: BackboneVGGTCfg, d_in: int, gradient_checkpoint=False) -> None:
         # self.patch_embed_cls = cfg.patch_embed_cls
         super().__init__(gradient_checkpoint=gradient_checkpoint)
         self.dec_depth = self.aggregator.depth - 1      ## It is just used for DPT head.

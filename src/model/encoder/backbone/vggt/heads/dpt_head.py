@@ -459,7 +459,7 @@ class FeatureFusionBlock(nn.Module):
 def custom_interpolate(
     x: torch.Tensor,
     size: Tuple[int, int] = None,
-    scale_factor: float = None,
+    scale_factor: float | int = None,
     mode: str = "bilinear",
     align_corners: bool = True,
 ) -> torch.Tensor:

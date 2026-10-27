@@ -150,10 +150,15 @@ class ScaleAndShiftInvariantGradientLoss(nn.Module):
             return loss, scale, shift
         return loss, scale, shift
     
-def normal_map_loss(pred_normal, gt_normal):
-    mask = torch.isfinite(gt_normal).all(dim=-1)
-    mask = torch.isfinite(pred_normal).all(dim=-1) & mask
-    gt_normal = torch.where(mask[..., None], gt_normal, 1)
+def normal_map_loss(pred_normal, gt_normal, mask=None):
+    valid = torch.isfinite(gt_normal).all(dim=-1)
+    valid = torch.isfinite(pred_normal).all(dim=-1) & valid
+    if mask is not None:
+        valid = valid & mask.bool()
+    if not valid.any():
+        return pred_normal.sum() * 0.0, {"valid_fraction": valid.float().mean()}
 
-    loss = (mask * utils3d.pt.angle_between(pred_normal, gt_normal).square()).mean(dim=(-2, -1))
-    return loss.mean(), {}
+    safe_gt_normal = torch.where(valid[..., None], gt_normal, 1)
+    safe_pred_normal = torch.where(valid[..., None], pred_normal, 1)
+    angle_error = utils3d.pt.angle_between(safe_pred_normal, safe_gt_normal).square()
+    return angle_error[valid].mean(), {"valid_fraction": valid.float().mean().detach()}

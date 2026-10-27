@@ -4,12 +4,13 @@ defaults:
   - loss: [mse]
 
 wandb:
-  project: c4g
-  entity: 3d_gpt
-  name: c4g_train
+  project: t4gs
+  name: t4gs_train
   mode: disabled
 
 mode: train
+
+force_davis_intrinsics: false
 
 data_loader:
   train:
@@ -43,6 +44,10 @@ train:
   depth_mode: null
   extended_visualization: false
   print_log_every_n_steps: 10
+  # Lossless INRIA/SuperSplat PLY sequence export for selected validation samples.
+  # The existing validation frequency and sampling policy still control when it runs.
+  save_gaussian_sequence: false
+  gaussian_sequence_output_path: null
 
 test:
   output_path: outputs/test
@@ -62,6 +67,7 @@ trainer:
   val_check_interval: 250
   gradient_clip_val: 0.5
   num_nodes: 1
+  num_sanity_val_steps: 2
 
 hydra:
   run:

@@ -4,7 +4,7 @@ Uses DA3 to estimate pseudo camera poses, then applies Umeyama Sim(3) pose
 alignment between the first-pass and second-pass DA3 predictions to improve
 rendering quality. Outputs GT | Ours side-by-side videos per scene.
 
-Usage (from C4G/ directory):
+Usage (from T4GS/ directory):
     python scripts/render_qualitative_davis.py \
         --checkpoint /path/to/checkpoint.ckpt \
         --output_dir ./outputs/qualitative_davis
@@ -240,7 +240,7 @@ def load_model(checkpoint_path: str, device: torch.device):
     from src.model.encoder import get_encoder
     from src.model.encoder.encoder_vggt import EncoderVGGTCfg, OpacityMappingCfg
     from src.model.encoder.common.gaussian_adapter import GaussianAdapterCfg
-    from src.model.encoder.backbone.backbone_croco import BackboneCrocoCfg
+    from src.model.encoder.backbone.backbone_vggt import BackboneVGGTCfg
     from src.model.decoder import get_decoder
     from src.model.decoder.decoder_splatting_cuda import DecoderSplattingCUDACfg
 
@@ -257,7 +257,7 @@ def load_model(checkpoint_path: str, device: torch.device):
 
     num_gaussians = encoder_state.get("gaussian_tokens", torch.zeros(2048)).shape[0]
 
-    backbone_cfg = BackboneCrocoCfg(name="vggt_multi", model="ViTLarge_BaseDecoder")
+    backbone_cfg = BackboneVGGTCfg(name="vggt_multi", model="ViTLarge_BaseDecoder")
     gaussian_adapter_cfg = GaussianAdapterCfg(
         gaussian_scale_min=0.5, gaussian_scale_max=15.0, sh_degree=0, clamping=-1,
     )
@@ -268,6 +268,8 @@ def load_model(checkpoint_path: str, device: torch.device):
         opacity_mapping=opacity_cfg, num_gaussians=num_gaussians,
         timestamp_embedding=True, timestamp_embedding_type="sinusoidal",
         sinusoidal_embedding_dim=256,
+        # T4GS time embedding (config/training/t4gs.yaml): relative offsets t - t_target, sinusoid period 100.
+        normalize_type="relative", sinusoidal_period=100,
     )
 
     encoder, _ = get_encoder(encoder_cfg)
@@ -592,7 +594,7 @@ def main():
     parser = argparse.ArgumentParser(
         description="Render qualitative DAVIS results with pose alignment"
     )
-    parser.add_argument("--checkpoint", default="path/to/c4g_reconstructor.ckpt")
+    parser.add_argument("--checkpoint", default="path/to/t4gs_reconstructor.ckpt")
     parser.add_argument("--davis_root", default=DEFAULT_DAVIS_ROOT)
     parser.add_argument("--scenes", nargs="*", default=None,
                         help="DAVIS scene names (default: all scenes)")

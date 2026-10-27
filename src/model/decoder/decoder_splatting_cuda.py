@@ -37,6 +37,18 @@ class DecoderSplattingCUDA(Decoder[DecoderSplattingCUDACfg]):
         )
         self.low_pass_filter = cfg.low_pass_filter
 
+    def low_pass_filter_at(self, global_step: int) -> float:
+        # Stateless schedule (/3 every decrease_lpf_step, floor 0.3). The old
+        # in-place update divided once per forward call, so T4GS's per-timestamp
+        # renders collapsed it in a single step, and it restarted on resume.
+        initial = self.cfg.low_pass_filter
+        if initial <= 0.3 or self.cfg.decrease_lpf_step <= 0:
+            return initial
+        if global_step < 0:
+            # Test/inference callers pass no step: use the fully decayed value.
+            return 0.3
+        return max(0.3, initial / 3.0 ** (global_step // self.cfg.decrease_lpf_step))
+
     def forward(
         self,
         gaussians: Gaussians,
@@ -51,9 +63,8 @@ class DecoderSplattingCUDA(Decoder[DecoderSplattingCUDACfg]):
         global_step = -1,
     ) -> DecoderOutput:
         
-        if self.low_pass_filter > 0.3 and global_step > 0 and self.cfg.decrease_lpf_step > 0 and global_step % self.cfg.decrease_lpf_step == 0:
-            self.low_pass_filter = max(0.3, self.low_pass_filter / 3.0)
-        
+        self.low_pass_filter = self.low_pass_filter_at(global_step)
+
         b, v, _, _ = extrinsics.shape
         color, depth = render_cuda(
             rearrange(extrinsics, "b v i j -> (b v) i j"),

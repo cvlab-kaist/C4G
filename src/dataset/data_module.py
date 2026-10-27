@@ -50,6 +50,27 @@ class DataLoaderCfg:
 DatasetShim = Callable[[Dataset, Stage], Dataset]
 
 
+def dataset_sampling_weights(dataset: Dataset) -> list[float]:
+    """Per-item sampler weights of one dataset, summing to cfg.sample_weight."""
+    inner = getattr(dataset, "dataset", dataset)  # unwrap dataset shims
+    cfg = getattr(inner, "cfg", None)
+    total = float(getattr(cfg, "sample_weight", 1.0)) if cfg is not None else 1.0
+    n = len(dataset)
+    item_weights = None
+    if hasattr(inner, "item_weights"):
+        item_weights = np.asarray(inner.item_weights(), dtype=np.float64)
+        if item_weights.shape != (n,) or not np.isfinite(item_weights).all() or item_weights.sum() <= 0:
+            print(f"Warning: ignoring invalid item_weights of {type(inner).__name__}")
+            item_weights = None
+    if item_weights is None:
+        item_weights = np.ones(n, dtype=np.float64)
+    item_weights = item_weights / item_weights.sum()
+    name = getattr(cfg, "name", type(inner).__name__)
+    print(f"sampler: {name}: {n} items, dataset share {total:.3f}, "
+          f"item weight min/max {item_weights.min():.2e}/{item_weights.max():.2e}")
+    return (total * item_weights).tolist()
+
+
 def worker_init_fn(worker_id: int) -> None:
     random.seed(int(torch.utils.data.get_worker_info().seed) % (2**32 - 1))
     np.random.seed(int(torch.utils.data.get_worker_info().seed) % (2**32 - 1))
@@ -93,13 +114,15 @@ class DataModule(LightningDataModule):
 
         if len(datasets) > 1:
             # Use ConcatDataset + WeightedRandomSampler to combine multiple
-            # map-style datasets. Each dataset gets equal total sampling
-            # probability regardless of its size.
+            # map-style datasets. Each dataset gets total sampling probability
+            # proportional to its cfg.sample_weight (default 1.0, i.e. equal
+            # shares regardless of size); inside a dataset the items are drawn
+            # proportionally to dataset.item_weights() when the dataset defines
+            # it (e.g. per-scene window counts), uniformly otherwise.
             combined = ConcatDataset(datasets)
             weights = []
             for ds in datasets:
-                w = 1.0 / len(ds)
-                weights.extend([w] * len(ds))
+                weights.extend(dataset_sampling_weights(ds))
             sampler = WeightedRandomSampler(
                 weights,
                 num_samples=len(combined),

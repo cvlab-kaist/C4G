@@ -1,0 +1,128 @@
+# @package _global_
+
+# T4GS training recipe (paper setting).
+#   - data: Kubric 0.35 / EgoExo4D (monocular) 0.30 / RealEstate10K 0.25 / Spring 0.10
+#   - init: C3G static Gaussian decoder; VGGT backbone (lr x0.01)
+#   - relative time embedding: tokens see t - t_target (sinusoid period 100)
+#   - losses: photometric (dynamic-mask MSE + 0.05 LPIPS), MoGe-2 scale-shift-invariant depth and normal,
+#     CoWTracker tracking consistency, and motion supervision of the per-timestamp Gaussians
+#     (absolute 3D flow on moving pairs, 3D flow on still pairs, 2D flow)
+# Kubric ships GT depth / flow / dynamic masks; Spring uses the preprocessed GT maps of
+# scripts/preprocess_spring_motion.py (motion_root); EgoExo4D gets online RAFT + MoGe pseudo-GT; RE10K is static.
+
+defaults:
+  - /dataset@_group_.kubric: kubric
+  - /dataset@_group_.spring: spring
+  - /dataset@_group_.egoexo4d_mono: egoexo4d_mono
+  - /dataset@_group_.re10k: re10k
+  - override /model/encoder: vggt
+  - override /model/encoder/backbone: vggt_multi
+  - override /loss: [dynamicmask, lpips]
+  - _self_
+
+wandb:
+  name: t4gs
+  tags: [t4gs]
+
+force_davis_intrinsics: true
+
+model:
+  encoder:
+    pretrained_weights: /path/to/C3G/pretrained_weights/gaussian_decoder.ckpt
+    normalize_type: relative
+    sinusoidal_period: 100
+
+dataset:
+  kubric:
+    sample_weight: 0.35
+    motion_fields: true
+    motion_instance_threshold: 0.02
+    photometric_mask: false
+    view_sampler:
+      warm_up_steps: 37500
+  spring:
+    sample_weight: 0.10
+    motion_root: /path/to/spring_motion_224
+    view_sampler:
+      num_context_views: 12
+      num_target_views: 11
+      gap: 2
+      initial_gap: 2
+      warm_up_steps: 37500
+    different_time: true
+    relative_time: false
+  egoexo4d_mono:
+    sample_weight: 0.30
+    frame_stride: 3
+    item_weighting: sqrt
+    view_sampler:
+      num_context_views: 12
+      num_target_views: 11
+      warm_up_steps: 37500
+  re10k:
+    sample_weight: 0.25
+    static_motion_mask: true
+    view_sampler:
+      num_context_views: 12
+      num_target_views: 11
+      warm_up_steps: 37500
+
+optimizer:
+  lr: 1e-5
+  warm_up_steps: 1000
+  backbone_lr_multiplier: 0.01
+  # 10k-step cosine over the 30k run (decay, rise, decay), the schedule of the released checkpoint;
+  # a single 30k-step cosine tracks Gaussian motion worse.
+  cosine_period: 10000
+
+data_loader:
+  train:
+    batch_size: 1
+
+train:
+  context_view_loss: true
+  reproj_model: moge
+  depth_supervision_mode: ssi
+  depth_loss: 1e-3
+  normal_loss: 1e-3
+  tracking_consistency_loss: 0.1
+  motion:
+    flow3d_weight: 0.0
+    flow2d_weight: 20.0
+    static_weight: 0.0
+    flow3d_move_weight: 0.0
+    flow3d_move_rel: 0.005
+    flow3d_move_abs_weight: 2.0
+    flow3d_move_abs_huber_rel: 0.0
+    flow3d_still_weight: 0.005
+    start_step: 1000
+    ramp_steps: 1000
+    visibility_rel_tol: 0.1
+    huber_rel: 0.005
+    huber_2d_rel: 0.01
+    mask_dilation: 3
+    detach_anchor: false
+    flow3d_dataset_weights:
+      egoexo4d_mono: 0.3
+    flow3d_move_dataset_weights:
+      egoexo4d_mono: 0.3
+    flow3d_move_abs_dataset_weights:
+      egoexo4d_mono: 0.3
+    flow3d_still_dataset_weights:
+      egoexo4d_mono: 0.3
+    online_pseudo_gt: true
+    online_pseudo_gt_datasets: [egoexo4d_mono]
+    static_camera_only_datasets: [spring]
+    online_flow_threshold: 0.5
+    online_fb_threshold: 1.0
+    online_raft_iters: 12
+    min_tokens: 32
+
+trainer:
+  max_steps: 30000
+  val_check_interval: 500
+  accumulate_grad_batches: 1
+
+checkpointing:
+  every_n_train_steps: 1000
+  save_last: true

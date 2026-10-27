@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, Optional, Protocol, runtime_checkable, Any, Tuple
+from typing import Dict, Literal, Optional, Protocol, runtime_checkable, Any, Tuple
 from itertools import accumulate
 
 import moviepy.editor as mpy
@@ -14,6 +14,7 @@ from lightning.pytorch.loggers.wandb import WandbLogger
 from lightning.pytorch.utilities import rank_zero_only
 from tabulate import tabulate
 from torch import Tensor, nn, optim
+import math
 import os
 from PIL import Image
 from tqdm import tqdm
@@ -31,9 +32,13 @@ from ..geometry.ptc_geometry import depthmap_to_pts3d
 from ..misc.benchmarker import Benchmarker
 from ..misc.cam_utils import update_pose, camera_normalization
 from ..misc.image_io import prep_image, save_image, save_video
+from ..misc.gaussian_sequence import (
+    export_gaussian_sequence,
+    validation_sequence_directory,
+)
 from ..misc.LocalLogger import LOG_PATH, LocalLogger
 from ..misc.step_tracker import StepTracker
-from ..misc.utils import inverse_normalize, vis_depth_map, confidence_map, get_overlap_tag
+from ..misc.utils import vis_depth_map, confidence_map, get_overlap_tag
 from .types import Gaussians
 from ..visualization.annotation import add_label
 from ..visualization.camera_trajectory.interpolation import (
@@ -51,6 +56,7 @@ from .decoder.decoder import Decoder, DepthRenderingMode
 from .encoder import Encoder
 from .encoder.visualization.encoder_visualizer import EncoderVisualizer
 from ..loss.loss_tracking import TrackingConsistencyLoss, project_points_to_image
+from ..loss.loss_motion import MotionLoss, MotionLossCfg
 import utils3d  # git+https://github.com/EasternJournalist/utils3d.git@3fab839f0be9931dac7c8488eb0e1600c236e183
 
 @dataclass
@@ -58,6 +64,18 @@ class OptimizerCfg:
     lr: float
     warm_up_steps: int
     backbone_lr_multiplier: float
+    scratch_encoder_head_lr: bool = False
+    # Cosine period (T_max) in steps after warm-up; defaults to trainer.max_steps. Past the period the
+    # cosine is periodic, so the LR rises back to lr and decays again.
+    cosine_period: Optional[int] = None
+    # LR restart for continuing a finished run (e.g. 30k -> 35k): when resuming from a checkpoint whose
+    # global_step <= restart_at, the saved scheduler state is dropped and a new schedule is used:
+    # linear warm-up over restart_warm_up_steps, then cosine restart_lr -> restart_min_lr until max_steps.
+    # Later resumes (preemption) restore the new schedule normally. The step counter is kept.
+    restart_at: Optional[int] = None
+    restart_lr: float = 3e-6
+    restart_min_lr: float = 1e-6
+    restart_warm_up_steps: int = 200
 
 
 @dataclass
@@ -81,16 +99,21 @@ class TrainCfg:
     depth_mode: DepthRenderingMode | None
     extended_visualization: bool
     print_log_every_n_steps: int
-    reproj_model: str = 'vggt' # 'vggt' or 'moge'
+    reproj_model: Literal["moge"] = "moge"  # MoGe-2 depth/normal pseudo labels
     depth_loss: float = 0.0
     normal_loss: float = 0.0
     depth_loss_step: int = 0
+    depth_supervision_mode: Literal["ssi"] = "ssi"
     tracking_consistency_loss: float = 0.0
     render_time_interpolation: bool = False
     render_time_interpolation_colored: bool = False
     validation_visualization: bool = True
     validation_attention_visualization: bool = True
     validation_lpips_batch_size: int = 1
+    save_gaussian_sequence: bool = False
+    gaussian_sequence_output_path: Optional[Path] = None
+    # Scene-flow / static-anchor supervision of the per-timestamp Gaussians.
+    motion: MotionLossCfg = field(default_factory=MotionLossCfg)
 
 
 @runtime_checkable
@@ -117,7 +140,11 @@ class ModelWrapper(LightningModule):
 
     # Frozen / optional modules whose weights should never be saved or
     # loaded from our own checkpoints (they load their own pretrained weights).
-    _EXCLUDED_PREFIXES = ("tracking_loss_fn.", "vggt.", "depth_loss_func.")
+    _EXCLUDED_PREFIXES = (
+        "tracking_loss_fn.",
+        "vggt.",
+        "depth_loss_func.",
+    )
 
     def state_dict(self, *args, **kwargs):
         """Exclude frozen / optional module weights from checkpoints."""
@@ -129,6 +156,10 @@ class ModelWrapper(LightningModule):
         """Filter out frozen / optional module weights from checkpoint.
         These modules are frozen and load their own pretrained weights,
         so checkpoint keys are never needed."""
+        restart_at = getattr(self.optimizer_cfg, "restart_at", None)
+        if restart_at is not None and checkpoint.get("global_step", 0) <= restart_at and "lr_schedulers" in checkpoint:
+            print(f"LR restart: dropping the saved scheduler state (checkpoint step {checkpoint.get('global_step')})")
+            checkpoint["lr_schedulers"] = []
         state_dict = checkpoint.get("state_dict", {})
         keys_to_remove = [k for k in state_dict
                           if any(k.startswith(p) for p in self._EXCLUDED_PREFIXES)]
@@ -139,7 +170,11 @@ class ModelWrapper(LightningModule):
         """Temporarily unregister frozen / optional modules so their keys
         are excluded from the strict check on both sides (checkpoint and model)."""
         saved = {}
-        for attr in ("tracking_loss_fn", "vggt", "depth_loss_func"):
+        for attr in (
+            "tracking_loss_fn",
+            "vggt",
+            "depth_loss_func",
+        ):
             if hasattr(self, attr):
                 saved[attr] = getattr(self, attr)
                 setattr(self, attr, None)
@@ -184,10 +219,36 @@ class ModelWrapper(LightningModule):
             self.vggt = None
 
         if mode == "train" and (self.train_cfg.depth_loss > 0 or self.train_cfg.normal_loss > 0):
-            self.depth_loss_func = ScaleAndShiftInvariantLoss()
+            if self.train_cfg.depth_supervision_mode == "ssi":
+                self.depth_loss_func = ScaleAndShiftInvariantLoss()
+            else:
+                raise ValueError(
+                    f"Unknown depth supervision mode: {self.train_cfg.depth_supervision_mode}"
+                )
 
         # Accumulate per-dataset validation metrics for epoch-end averaging.
         self._val_metrics: dict[str, list[dict[str, float]]] = {}
+
+        # Test-time state: the benchmarker times the encoder/decoder calls and
+        # the two lists back the (unused here) segmentation hook.
+        self.benchmarker = Benchmarker()
+        self.per_image_ious: list[float] = []
+        self.per_image_accs: list[float] = []
+
+        # Motion (scene flow / static anchor) loss, training only.
+        self.motion_loss_fn = None
+        if self.mode == "train" and any(
+            w > 0
+            for w in (
+                self.train_cfg.motion.flow3d_weight,
+                self.train_cfg.motion.flow2d_weight,
+                self.train_cfg.motion.static_weight,
+                self.train_cfg.motion.flow3d_move_weight,
+                self.train_cfg.motion.flow3d_still_weight,
+                self.train_cfg.motion.flow3d_move_abs_weight,
+            )
+        ):
+            self.motion_loss_fn = MotionLoss(self.train_cfg.motion)
 
         # Tracking loss is only needed during training.
         self.tracking_loss_fn = None
@@ -200,6 +261,20 @@ class ModelWrapper(LightningModule):
 
     def apply_data_shim(self, batch: Dict[str, Any]) -> BatchedExample:
         return self._data_shim(batch)
+
+    def context_images_rgb(self, batch: BatchedExample) -> Tensor:
+        image = batch["context"]["image"]
+        mean = torch.as_tensor(
+            self.encoder.cfg.input_mean,
+            dtype=image.dtype,
+            device=image.device,
+        )[None, None, :, None, None]
+        std = torch.as_tensor(
+            self.encoder.cfg.input_std,
+            dtype=image.dtype,
+            device=image.device,
+        )[None, None, :, None, None]
+        return (image * std + mean).clamp(0, 1)
 
     def training_step(self, multi_batch, batch_idx):
         multi_total_loss = 0
@@ -227,10 +302,13 @@ class ModelWrapper(LightningModule):
                 batch = batch_combined
 
             batch: BatchedExample = self.apply_data_shim(batch)
-
             b, _, _, h, w = batch["target"]["image"].shape
             all_timestamps = torch.cat([batch['context']['index'], batch['target']['index']], dim=1)
 
+            depth_supervision_active = (
+                (self.train_cfg.depth_loss > 0 or self.train_cfg.normal_loss > 0)
+                and self.global_step >= self.train_cfg.depth_loss_step
+            )
             visualization_dump = {}
 
             total_loss = 0
@@ -238,6 +316,14 @@ class ModelWrapper(LightningModule):
             unique_timestamps_list = unique_timestamps.tolist()
 
             gaussians_per_timestamp = self.encoder(batch["context"], self.global_step, visualization_dump=visualization_dump, target_timestamps=unique_timestamps)
+
+            num_ctx_total = batch["context"]["image"].shape[1]
+            num_views_total = num_ctx_total + batch["target"]["image"].shape[1]
+            motion_pseudo_depth = None
+            if self.motion_loss_fn is not None and self.motion_loss_fn.active(self.global_step):
+                motion_pseudo_depth = torch.zeros(
+                    b, num_views_total, h, w, device=batch["target"]["image"].device
+                )
 
             for t_idx in unique_timestamps_list:
                 gaussians_full = gaussians_per_timestamp[t_idx]
@@ -260,18 +346,47 @@ class ModelWrapper(LightningModule):
                     n_ctx_views = ctx_mask_b.sum().item()
                     n_tgt_views = tgt_mask_b.sum().item()
 
+                    view_extrinsics = torch.cat(
+                        [
+                            batch["context"]["extrinsics"][b_idx, ctx_mask_b],
+                            batch["target"]["extrinsics"][b_idx, tgt_mask_b],
+                        ],
+                        dim=0,
+                    )
+                    view_intrinsics = torch.cat(
+                        [
+                            batch["context"]["intrinsics"][b_idx, ctx_mask_b],
+                            batch["target"]["intrinsics"][b_idx, tgt_mask_b],
+                        ],
+                        dim=0,
+                    )
+                    view_near = torch.cat(
+                        [
+                            batch["context"]["near"][b_idx, ctx_mask_b],
+                            batch["target"]["near"][b_idx, tgt_mask_b],
+                        ],
+                        dim=0,
+                    )
+                    view_far = torch.cat(
+                        [
+                            batch["context"]["far"][b_idx, ctx_mask_b],
+                            batch["target"]["far"][b_idx, tgt_mask_b],
+                        ],
+                        dim=0,
+                    )
+
                     output = self.decoder.forward(
                         gaussians,
-                        torch.cat([batch["context"]["extrinsics"][b_idx, ctx_mask_b], batch["target"]["extrinsics"][b_idx, tgt_mask_b]], dim=0).unsqueeze(0),
-                        torch.cat([batch["context"]["intrinsics"][b_idx, ctx_mask_b], batch["target"]["intrinsics"][b_idx, tgt_mask_b]], dim=0).unsqueeze(0),
-                        torch.cat([batch["context"]["near"][b_idx, ctx_mask_b], batch["target"]["near"][b_idx, tgt_mask_b]], dim=0).unsqueeze(0),
-                        torch.cat([batch["context"]["far"][b_idx, ctx_mask_b], batch["target"]["far"][b_idx, tgt_mask_b]], dim=0).unsqueeze(0),
+                        view_extrinsics.unsqueeze(0),
+                        view_intrinsics.unsqueeze(0),
+                        view_near.unsqueeze(0),
+                        view_far.unsqueeze(0),
                         (h, w),
                         depth_mode=self.train_cfg.depth_mode,
                         global_step=self.global_step,
                     )
 
-                    context_gt = ((batch["context"]["image"][b_idx, ctx_mask_b] + 1) / 2)
+                    context_gt = self.context_images_rgb(batch)[b_idx, ctx_mask_b]
                     target_gt = batch["target"]["image"][b_idx, tgt_mask_b]
                     target_gt = torch.cat([context_gt, target_gt], dim=0).unsqueeze(0)
 
@@ -303,19 +418,55 @@ class ModelWrapper(LightningModule):
                         self.log(f"loss/{loss_fn.name}", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
                         total_loss = total_loss + loss
 
-                    if (self.train_cfg.depth_loss > 0 or self.train_cfg.normal_loss > 0) and self.global_step > self.train_cfg.depth_loss_step:
-                        pseudo_gt_depth, pseudo_gt_normal = self.get_depth_pseudo_labels(target_gt) # (b v) h w, (b v) h w c
-                        pseudo_gt_depth[pseudo_gt_depth.isinf()] = 0
-
-                        depth_loss, _, _ = self.depth_loss_func(rearrange(output.depth, "b v h w -> (b v) h w"), pseudo_gt_depth.detach(), mask = (pseudo_gt_depth.detach()>0))
+                    if depth_supervision_active:
+                        pseudo_gt_depth, pseudo_gt_normal = self.get_depth_pseudo_labels(target_gt)
+                        if motion_pseudo_depth is not None:
+                            # Keep the monocular depth of every view for the
+                            # motion loss's online pseudo-GT (same view order
+                            # as target_gt: context views, then targets).
+                            view_ids = torch.cat([
+                                ctx_mask_b.nonzero()[:, 0],
+                                num_ctx_total + tgt_mask_b.nonzero()[:, 0],
+                            ])
+                            motion_pseudo_depth[b_idx, view_ids] = pseudo_gt_depth.detach().float()
+                        pseudo_depth_mask = torch.isfinite(pseudo_gt_depth) & (pseudo_gt_depth > 0)
+                        pseudo_gt_depth = torch.where(
+                            pseudo_depth_mask,
+                            pseudo_gt_depth,
+                            torch.zeros_like(pseudo_gt_depth),
+                        )
+                        depth_loss, _, _ = self.depth_loss_func(
+                            rearrange(output.depth, "b v h w -> (b v) h w"),
+                            pseudo_gt_depth.detach(),
+                            mask=pseudo_depth_mask.detach(),
+                        )
 
                         self.log("loss/depth_loss", depth_loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
                         total_loss = total_loss + self.train_cfg.depth_loss * depth_loss
 
                         if self.train_cfg.normal_loss > 0:
-                            pred_normal = self.convert_depth_to_normal(rearrange(output.depth, "b v h w -> (b v) h w"), torch.cat([batch["context"]["intrinsics"][b_idx, ctx_mask_b], batch["target"]["intrinsics"][b_idx, tgt_mask_b]], dim=0)) # (b v) c h w
-                            normal_loss, _ = normal_map_loss(pred_normal, pseudo_gt_normal.detach())
+                            pred_normal = self.convert_depth_to_normal(
+                                rearrange(output.depth, "b v h w -> (b v) h w"),
+                                view_intrinsics,
+                            )
+                            if pseudo_gt_normal is None:
+                                with torch.no_grad():
+                                    pseudo_gt_normal = self.convert_depth_to_normal(
+                                        pseudo_gt_depth, view_intrinsics
+                                    )
+                            normal_loss, normal_diagnostics = normal_map_loss(
+                                pred_normal,
+                                pseudo_gt_normal.detach(),
+                                mask=pseudo_depth_mask.detach(),
+                            )
                             self.log("loss/normal_loss", normal_loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+                            self.log(
+                                "depth_supervision/normal_valid_fraction",
+                                normal_diagnostics["valid_fraction"],
+                                on_step=True,
+                                on_epoch=True,
+                                logger=True,
+                            )
                             total_loss = total_loss + self.train_cfg.normal_loss * normal_loss
 
                             del pseudo_gt_normal, pred_normal
@@ -352,6 +503,12 @@ class ModelWrapper(LightningModule):
 
             total_loss = total_loss / len(unique_timestamps_list)
 
+            self._last_motion_log = None
+            if motion_pseudo_depth is not None:
+                total_loss = total_loss + self.compute_motion_loss(
+                    batch, gaussians_per_timestamp, motion_pseudo_depth
+                )
+
             self.log("loss/total", total_loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
 
             if (
@@ -359,12 +516,17 @@ class ModelWrapper(LightningModule):
                 and self.global_step % self.train_cfg.print_log_every_n_steps == 0
                 and (batch_idx + 1) % self.trainer.accumulate_grad_batches == 0
             ):
+                motion_log = getattr(self, "_last_motion_log", None)
+                motion_str = (
+                    "; motion = {" + ", ".join(f"{k}: {v:.5f}" for k, v in motion_log.items()) + "}"
+                    if motion_log else ""
+                )
                 print(
                     f"train step {self.global_step}; "
                     f"scene = {[x[:20] for x in batch['scene']]}; "
                     f"context = {batch['context']['index'].tolist()}; "
                     f"loss = {total_loss:.6f}",
-                    f"low_pass_filter = {self.decoder.low_pass_filter:.3f}"
+                    f"low_pass_filter = {self.decoder.low_pass_filter:.3f}" + motion_str
                 )
             multi_total_loss = multi_total_loss + total_loss
         multi_total_loss = multi_total_loss / len(multi_batch)
@@ -376,14 +538,6 @@ class ModelWrapper(LightningModule):
         return multi_total_loss
 
     def test_step(self, batch, batch_idx):
-        """
-        C4G Test Step: 각 target timestamp에 대해 encoder를 호출하여 Gaussian 생성 후 렌더링.
-        
-        C3G와의 차이점:
-        - encoder에 target_timestamp 전달 필요
-        - 각 timestamp마다 별도로 encoder 호출
-        - tto_gs 미사용
-        """
         batch: BatchedExample = self.apply_data_shim(batch)
 
         b, v, _, h, w = batch["target"]["image"].shape
@@ -406,7 +560,7 @@ class ModelWrapper(LightningModule):
                 mode='bilinear', 
                 align_corners=False
             ).reshape(b, cv, 3, 224, 224)
-        
+
         assert b == 1
         # if batch_idx % 100 == 0:
         print(f"Test step {batch_idx:0>6}.")
@@ -481,8 +635,9 @@ class ModelWrapper(LightningModule):
 
         # Compute scores
         if self.test_cfg.compute_scores:
-            overlap = batch["context"]["overlap"][0]
-            overlap_tag = get_overlap_tag(overlap)
+            # Some eval datasets (e.g. TUM) do not report a context overlap.
+            overlap = batch["context"].get("overlap", None)
+            overlap_tag = get_overlap_tag(overlap[0]) if overlap is not None else None
             
             psnr = compute_psnr(rgb_gt, rgb_pred).mean()
             all_metrics = {
@@ -498,7 +653,7 @@ class ModelWrapper(LightningModule):
 
         # Save context images
         if self.test_cfg.save_image:
-            context_img = inverse_normalize(batch["context"]["image"][0])
+            context_img = self.context_images_rgb(batch)[0]
             for ctx_idx, ctx_img in enumerate(context_img):
                 ctx_t = batch["context"]["index"][0, ctx_idx].item()
                 ctx_cam = batch["context"]["camera"][0, ctx_idx].item()
@@ -525,7 +680,7 @@ class ModelWrapper(LightningModule):
 
         # Save comparison image
         if self.test_cfg.save_compare:
-            context_img = inverse_normalize(batch["context"]["image"][0])
+            context_img = self.context_images_rgb(batch)[0]
             error_map = (rgb_gt - rgb_pred.clamp(0, 1)).abs()
             comparison = hcat(
                 add_label(vcat(*context_img), "Context"),
@@ -701,6 +856,41 @@ class ModelWrapper(LightningModule):
         torch.cuda.synchronize()
         _encoder_ms = _t0.elapsed_time(_t1)
 
+        # Optional, lossless validation-only export. This serializes the exact
+        # renderer Gaussians before any visualization coloring/filtering.
+        if self.train_cfg.save_gaussian_sequence:
+            export_root = self.train_cfg.gaussian_sequence_output_path
+            if export_root is None:
+                export_root = Path(self.trainer.default_root_dir)
+            for sample_index, source_sample in enumerate(batch["scene"]):
+                sequence_dir = validation_sequence_directory(
+                    export_root,
+                    checkpoint_step=int(self.global_step),
+                    dataloader_index=int(dataloader_idx),
+                    batch_index=int(batch_idx),
+                    source_sample=str(source_sample),
+                )
+                try:
+                    export_gaussian_sequence(
+                        gaussian_per_timestamp,
+                        sequence_dir,
+                        source_sample=str(source_sample),
+                        checkpoint_step=int(self.global_step),
+                        batch_index=sample_index,
+                        extra_metadata={
+                            "validation_batch_index": int(batch_idx),
+                            "validation_dataloader_index": int(dataloader_idx),
+                        },
+                        validate=True,
+                    )
+                    print(f"[VAL] Gaussian sequence saved to {sequence_dir}")
+                except FileExistsError:
+                    # Validation can be retried at the same step. Avoid mixing or
+                    # destructively replacing an already complete sequence.
+                    print(
+                        f"[VAL] Gaussian sequence already exists; skipping {sequence_dir}"
+                    )
+
         _t0.record()
         for t_idx in sorted(torch.unique(all_timestamps).tolist()):
             gaussians = gaussian_per_timestamp[t_idx]
@@ -720,7 +910,7 @@ class ModelWrapper(LightningModule):
 
             rgb_pred.append(output.color[0])
 
-            rgb_gt.append(torch.cat([((batch["context"]["image"][context_mask] + 1) / 2), batch["target"]["image"][target_mask]], dim=0))
+            rgb_gt.append(torch.cat([self.context_images_rgb(batch)[context_mask], batch["target"]["image"][target_mask]], dim=0))
             if do_visualization:
                 depth_pred.append(vis_depth_map(output.depth[0]))
             gs_list.append(gaussians)
@@ -802,7 +992,7 @@ class ModelWrapper(LightningModule):
 
             # Construct comparison image.
             vis_prefix = f"{ds_name}/" if ds_name else ""
-            context_img = inverse_normalize(batch["context"]["image"][0])
+            context_img = self.context_images_rgb(batch)[0]
             context = []
             for i in range(context_img.shape[0]):
                 context.append(context_img[i])
@@ -914,21 +1104,72 @@ class ModelWrapper(LightningModule):
         
         
     def get_depth_pseudo_labels(self, images):
-        # use vggt to get depth pseudo labels
-        if self.train_cfg.reproj_model=='vggt':    
-            images = (images * 2) - 1  # normalize to [-1, 1]
-            images = images.unsqueeze(dim=1)
-            with torch.no_grad():
-                output = self.vggt(images)
-            depth_pseudo_gt = output['depth'].squeeze(dim=1)
-            normal_map = None
-        elif self.train_cfg.reproj_model=='moge':
-            with torch.no_grad():
-                images = rearrange(images, 'b v c h w-> (b v) c h w')
-                output = self.vggt.infer(images, resolution_level=5)
-            depth_pseudo_gt = output['depth'].clone()
-            normal_map = output['normal'].clone()
+        # MoGe-2 depth / normal pseudo labels (self.vggt holds the frozen MoGe model)
+        with torch.no_grad():
+            images = rearrange(images, 'b v c h w-> (b v) c h w')
+            output = self.vggt.infer(images, resolution_level=5)
+        depth_pseudo_gt = output['depth'].clone()
+        normal_map = output['normal'].clone()
         return depth_pseudo_gt, normal_map
+
+    def compute_motion_loss(
+        self,
+        batch: BatchedExample,
+        gaussians_per_timestamp: dict,
+        pseudo_depth: Tensor,
+    ) -> Tensor:
+        """Weighted scene-flow / static-anchor loss over the batch, with logging."""
+        motion_keys = ("depth", "motion_flow", "motion_depth_next", "motion_mask", "motion_valid")
+        ds_name = batch.get("dataset_name", ["unknown"])
+        ds_name = ds_name[0] if isinstance(ds_name, (list, tuple)) else str(ds_name)
+        b = batch["context"]["image"].shape[0]
+        context_rgb = self.context_images_rgb(batch)
+        total = torch.zeros((), device=context_rgb.device)
+        sums: dict[str, list[Tensor]] = {}
+        stats_acc: dict[str, list[float]] = {}
+        for b_idx in range(b):
+            views = {
+                "extrinsics": torch.cat([batch["context"]["extrinsics"][b_idx], batch["target"]["extrinsics"][b_idx]]),
+                "intrinsics": torch.cat([batch["context"]["intrinsics"][b_idx], batch["target"]["intrinsics"][b_idx]]),
+                "index": torch.cat([batch["context"]["index"][b_idx], batch["target"]["index"][b_idx]]),
+                "camera": torch.cat([batch["context"]["camera"][b_idx], batch["target"]["camera"][b_idx]])
+                if "camera" in batch["context"] and "camera" in batch["target"] else None,
+                "image": torch.cat([context_rgb[b_idx], batch["target"]["image"][b_idx].clamp(0, 1)]),
+            }
+            for key in motion_keys:
+                if key in batch["context"] and key in batch["target"]:
+                    views[key] = torch.cat([batch["context"][key][b_idx], batch["target"][key][b_idx]])
+            means = {t: g.means[b_idx] for t, g in gaussians_per_timestamp.items()}
+            has_pseudo = bool((pseudo_depth[b_idx] > 0).any())
+            losses, stats = self.motion_loss_fn(
+                means,
+                views,
+                ds_name,
+                self.global_step,
+                pseudo_depth=pseudo_depth[b_idx] if has_pseudo else None,
+                depth_fn=(lambda imgs: self.get_depth_pseudo_labels(imgs[None])[0])
+                if (self.vggt is not None and self.train_cfg.reproj_model == "moge") else None,
+            )
+            for name, value in losses.items():
+                weight = self.motion_loss_fn.term_weight(name, ds_name, self.global_step)
+                total = total + weight * value
+                sums.setdefault(name, []).append(value.detach())
+            for name, value in stats.items():
+                stats_acc.setdefault(name, []).append(value)
+        self._last_motion_log = {
+            **{name: float(torch.stack(values).mean()) for name, values in sums.items()},
+            **{name: sum(values) / len(values) for name, values in stats_acc.items()
+               if name in ("depth_scale", "visible_fraction", "static_fraction", "camera_static",
+                           "flow3d_move_ratio", "flow3d_move_cos")},
+        }
+        for name, values in sums.items():
+            mean_value = torch.stack(values).mean()
+            self.log(f"loss/motion_{name}", mean_value, on_step=True, on_epoch=True, prog_bar=(name == "flow3d"), logger=True)
+            self.log(f"loss/motion_{name}/{ds_name}", mean_value, on_step=True, on_epoch=True, logger=True)
+        for name, values in stats_acc.items():
+            self.log(f"motion/{name}/{ds_name}", sum(values) / len(values), on_step=True, on_epoch=True, logger=True)
+        self.log("loss/motion_total", total, on_step=True, on_epoch=True, logger=True)
+        return total
 
     @rank_zero_only
     def render_all_timestamps(
@@ -1599,7 +1840,7 @@ class ModelWrapper(LightningModule):
         g_means = [gaussians.means[0, g_idx * gpt + j] for j in range(gpt)]  # list of (3,)
 
         # Get context images (first batch element, denormalized)
-        context_imgs = inverse_normalize(batch["context"]["image"][0])  # (v, 3, H, W)
+        context_imgs = self.context_images_rgb(batch)[0]  # (v, 3, H, W)
 
         # Project all sub-gaussians onto each context view
         # proj_coords_all[vi] = list of (py, px, is_valid) for each sub-gaussian
@@ -1796,7 +2037,7 @@ class ModelWrapper(LightningModule):
                 batch["context"]["intrinsics"][0, v_idx],
                 batch["context"]["near"][0, v_idx],
                 batch["context"]["far"][0, v_idx],
-                (batch["context"]["image"][0, v_idx] + 1) / 2,  # [-1,1] -> [0,1]
+                self.context_images_rgb(batch)[0, v_idx],
                 True,  # is_context
             ))
 
@@ -2143,7 +2384,17 @@ class ModelWrapper(LightningModule):
             if not param.requires_grad:
                 continue
 
-            if "gaussian_param_head" in name or "intrinsic_encoder" in name or 'gmae' in name:
+            scratch_encoder_head = (
+                self.optimizer_cfg.scratch_encoder_head_lr
+                and name.startswith("encoder.")
+                and not name.startswith("encoder.backbone.")
+            )
+            if (
+                "gaussian_param_head" in name
+                or "intrinsic_encoder" in name
+                or "gmae" in name
+                or scratch_encoder_head
+            ):
                 new_params.append(param)
                 new_param_names.append(name)
             else:
@@ -2160,6 +2411,27 @@ class ModelWrapper(LightningModule):
                 "lr": self.optimizer_cfg.lr * self.optimizer_cfg.backbone_lr_multiplier,
             },
         ]
+        restart_at = getattr(self.optimizer_cfg, "restart_at", None)
+        if restart_at is not None:
+            cfg = self.optimizer_cfg
+            for group in param_dicts:
+                group["lr"] = group["lr"] / cfg.lr * cfg.restart_lr
+            optimizer = torch.optim.AdamW(param_dicts, lr=cfg.restart_lr, weight_decay=0.05, betas=(0.9, 0.95))
+            total = max(get_cfg()["trainer"]["max_steps"] - restart_at, 1)
+            warm = max(min(cfg.restart_warm_up_steps, total - 1), 1)
+            floor = cfg.restart_min_lr / cfg.restart_lr
+
+            def restart_factor(e: int) -> float:  # closed form, so restored optimizer lrs do not matter
+                if e < warm:
+                    return (e + 1) / warm
+                progress = min((e - warm) / max(total - warm, 1), 1.0)
+                return floor + (1 - floor) * 0.5 * (1 + math.cos(math.pi * progress))
+
+            lr_scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, restart_factor)
+            return {
+                "optimizer": optimizer,
+                "lr_scheduler": {"scheduler": lr_scheduler, "interval": "step", "frequency": 1},
+            }
         optimizer = torch.optim.AdamW(param_dicts, lr=self.optimizer_cfg.lr, weight_decay=0.05, betas=(0.9, 0.95))
         warm_up_steps = self.optimizer_cfg.warm_up_steps
         warm_up = torch.optim.lr_scheduler.LinearLR(
@@ -2169,7 +2441,8 @@ class ModelWrapper(LightningModule):
             total_iters=warm_up_steps,
         )
 
-        lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=get_cfg()["trainer"]["max_steps"], eta_min=self.optimizer_cfg.lr * 0.1)
+        t_max = self.optimizer_cfg.cosine_period or get_cfg()["trainer"]["max_steps"]
+        lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=t_max, eta_min=self.optimizer_cfg.lr * 0.1)
         lr_scheduler = torch.optim.lr_scheduler.SequentialLR(optimizer, schedulers=[warm_up, lr_scheduler], milestones=[warm_up_steps])
 
         return {

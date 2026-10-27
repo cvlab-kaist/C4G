@@ -195,3 +195,7 @@ src/depth_anything_3/
 !submodules/**/*.yaml
 *.yml
 !submodules/**/*.yml
+
+# Local experiment artefacts
+/run_logs
+*.orig

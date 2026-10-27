@@ -6,7 +6,7 @@ from .loss_dynamicmask import LossDynamicMask, LossDynamicMaskCfgWrapper
 LOSSES = {
     LossLpipsCfgWrapper: LossLpips,
     LossMseCfgWrapper: LossMse,
-    LossDynamicMaskCfgWrapper: LossDynamicMask,  # Wrapper를 키로 사용
+    LossDynamicMaskCfgWrapper: LossDynamicMask,
 }
 
 LossCfgWrapper = LossLpipsCfgWrapper | LossMseCfgWrapper | LossDynamicMaskCfgWrapper

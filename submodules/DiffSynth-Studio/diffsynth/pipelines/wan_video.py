@@ -1514,7 +1514,7 @@ def model_fn_wan_video(
     f, h, w = x.shape[2:]
     x = rearrange(x, 'b c f h w -> b (f h w) c').contiguous()
 
-    # C4G: context_tokens prepend using patch_embedding_context (Conv3d(16, dim))
+    # T4GS: context_tokens prepend using patch_embedding_context (Conv3d(16, dim))
     n_context_tokens = 0
     if context_latents is not None and hasattr(dit, 'patch_embedding_context'):
         context_tokens = dit.patch_embedding_context(context_latents)  # (B, dim, f, h, w)
@@ -1553,7 +1553,7 @@ def model_fn_wan_video(
             dit.freqs[2][:w].view(1, 1, w, -1).expand(f, h, w, -1)
         ], dim=-1).reshape(f * h * w, 1, -1).to(x.device)
 
-    # C4G: context_tokens share the same timestamps as x_tokens → prepend same freqs
+    # T4GS: context_tokens share the same timestamps as x_tokens → prepend same freqs
     if n_context_tokens > 0:
         freqs = torch.cat([freqs[:n_context_tokens], freqs], dim=0)
 
@@ -1745,7 +1745,7 @@ def model_fn_wan_video(
     if reference_latents is not None:
         x = x[:, reference_latents.shape[1]:]
         f -= 1
-    # C4G: unpatchify full sequence (context_tokens + x_tokens)
+    # T4GS: unpatchify full sequence (context_tokens + x_tokens)
     # context_tokens count is prepended at the front: n_context_tokens tokens
     f_total = f + (n_context_tokens // (h * w) if n_context_tokens > 0 else 0)
     x = dit.unpatchify(x, (f_total, h, w))

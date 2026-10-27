@@ -21,7 +21,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import wandb
 
 DEFAULT_PRECOMPUTED_ROOT = (
-    "/path/to/c4g_precomputed_davis"
+    "/path/to/t4gs_precomputed_davis"
 )
 
 DAVIS_ROOTS = [
@@ -76,7 +76,6 @@ def parse_scene_info(scene_dir: str) -> SceneInfo:
         raise FileNotFoundError(f"No {'{start}_{end}_{gap}_{t_idx}.png'} files in {view_dir}")
 
     if len(starts) != 1 or len(ends) != 1:
-        # 여러 (start, end) 세트가 섞인 경우 — 파일 수가 가장 많은 세트 선택
         from collections import defaultdict, Counter
         group_count = Counter()
         group_tidxs = defaultdict(list)
@@ -121,13 +120,13 @@ def load_davis_frame(davis_root: str, scene_name: str, frame_idx: int,
     return img
 
 
-def load_c4g_frame(scene_dir: str, info: SceneInfo, t_idx: int) -> np.ndarray:
-    """Load a C4G rendered frame (BGR) from rendered_by_view/view_0000/."""
+def load_t4gs_frame(scene_dir: str, info: SceneInfo, t_idx: int) -> np.ndarray:
+    """Load a T4GS rendered frame (BGR) from rendered_by_view/view_0000/."""
     fname = f"{info.start}_{info.end}_{info.gap}_{t_idx}.png"
     path = os.path.join(scene_dir, "rendered_by_view", "view_0000", fname)
     img = cv2.imread(path, cv2.IMREAD_COLOR)
     if img is None:
-        raise FileNotFoundError(f"C4G frame not found: {path}")
+        raise FileNotFoundError(f"T4GS frame not found: {path}")
     return img
 
 
@@ -368,12 +367,12 @@ def process_scene(
         f"target({len(tgt_indices)})  between({len(between_indices)})"
     )
 
-    # Verify all C4G target frames exist
+    # Verify all T4GS target frames exist
     for t in tgt_indices:
         fname = f"{info.start}_{info.end}_{info.gap}_{t}.png"
         p = os.path.join(scene_dir, "rendered_by_view", "view_0000", fname)
         if not os.path.exists(p):
-            raise FileNotFoundError(f"Missing C4G frame: {p}")
+            raise FileNotFoundError(f"Missing T4GS frame: {p}")
 
     davis_root = find_davis_root(scene_name)
     print(f"  [davis] {davis_root}/{scene_name}")
@@ -384,11 +383,11 @@ def process_scene(
     # Load full-target GT from DAVIS (for metrics and WAN conditioning)
     tgt_gt_bgr = [load_davis_frame(davis_root, scene_name, i) for i in tgt_indices]
 
-    # Load C4G rendered frames
-    c4g_bgr = [load_c4g_frame(scene_dir, info, i) for i in tgt_indices]
+    # Load T4GS rendered frames
+    t4gs_bgr = [load_t4gs_frame(scene_dir, info, i) for i in tgt_indices]
 
     # Verify resolution consistency
-    for name, frames in [("ctx_gt", ctx_gt_bgr), ("tgt_gt", tgt_gt_bgr), ("c4g", c4g_bgr)]:
+    for name, frames in [("ctx_gt", ctx_gt_bgr), ("tgt_gt", tgt_gt_bgr), ("t4gs", t4gs_bgr)]:
         for i, f in enumerate(frames):
             assert f.shape[:2] == (WAN_H, WAN_W), \
                 f"{name}[{i}] shape mismatch: {f.shape[:2]} != ({WAN_H},{WAN_W})"
@@ -398,25 +397,24 @@ def process_scene(
 
     base_metrics_between = compute_metrics_batch(
         [tgt_gt_bgr[i] for i in between_pos_in_tgt],
-        [c4g_bgr[i] for i in between_pos_in_tgt],
-        lpips_fn, device, "C4G (target_between)",
+        [t4gs_bgr[i] for i in between_pos_in_tgt],
+        lpips_fn, device, "T4GS (target_between)",
     )
     base_metrics_all = compute_metrics_batch(
         tgt_gt_bgr,
-        c4g_bgr,
-        lpips_fn, device, "C4G (target_all)",
+        t4gs_bgr,
+        lpips_fn, device, "T4GS (target_all)",
     )
 
     ctx_imgs_01 = torch.from_numpy(
         np.stack([cv2.cvtColor(f, cv2.COLOR_BGR2RGB) for f in ctx_gt_bgr], axis=0)
     ).float().div(255).permute(0, 3, 1, 2).contiguous().to(device)
     target_rgb_01 = torch.from_numpy(
-        np.stack([cv2.cvtColor(f, cv2.COLOR_BGR2RGB) for f in c4g_bgr], axis=0)
+        np.stack([cv2.cvtColor(f, cv2.COLOR_BGR2RGB) for f in t4gs_bgr], axis=0)
     ).float().div(255).permute(0, 3, 1, 2).contiguous().to(device)
     target_gt_01 = torch.from_numpy(
         np.stack([cv2.cvtColor(f, cv2.COLOR_BGR2RGB) for f in tgt_gt_bgr], axis=0)
     ).float().div(255).permute(0, 3, 1, 2).contiguous().to(device)
-    # 0-normalize: WAN은 0-based index로 학습됨 (MK 원본 스크립트와 동일하게)
     offset = info.start
     ctx_idx_t = torch.tensor([i - offset for i in ctx_indices_wan], dtype=torch.long, device=device)
     target_idx_t = torch.tensor([i - offset for i in tgt_indices], dtype=torch.long, device=device)
@@ -458,13 +456,13 @@ def process_scene(
         lpips_fn, device, "WAN (target_all)",
     )
 
-    # Combined side-by-side: c4g | gt | wan
+    # Combined side-by-side: t4gs | gt | wan
     combined_between = [
-        np.concatenate([c4g_bgr[i], tgt_gt_bgr[i], wan_between_bgr[idx]], axis=1)
+        np.concatenate([t4gs_bgr[i], tgt_gt_bgr[i], wan_between_bgr[idx]], axis=1)
         for idx, i in enumerate(between_pos_in_tgt)
     ]
     combined_full = [
-        np.concatenate([c4g_bgr[i], tgt_gt_bgr[i], wan_tgt_bgr[i]], axis=1)
+        np.concatenate([t4gs_bgr[i], tgt_gt_bgr[i], wan_tgt_bgr[i]], axis=1)
         for i in range(len(tgt_indices))
     ]
     combined_view1 = [
@@ -478,13 +476,13 @@ def process_scene(
         save_video(wan_between_bgr, os.path.join(out_dir, "target_wan.mp4"), fps=fps)
         save_video(wan_view1_bgr, os.path.join(out_dir, "context_wan_view1.mp4"), fps=fps)
         save_video(combined_view1, os.path.join(out_dir, "view1_ctx_wan.mp4"), fps=fps)
-        save_video(combined_between, os.path.join(out_dir, "view2_between_c4g_gt_wan.mp4"), fps=fps)
-        save_video(combined_full, os.path.join(out_dir, "view2_full_c4g_gt_wan.mp4"), fps=fps)
+        save_video(combined_between, os.path.join(out_dir, "view2_between_t4gs_gt_wan.mp4"), fps=fps)
+        save_video(combined_full, os.path.join(out_dir, "view2_full_t4gs_gt_wan.mp4"), fps=fps)
         with open(os.path.join(out_dir, f"{scene_name}_metrics.txt"), "w") as f:
             metrics_to_save = {
-                **{f"c4g_between_{k}": v for k, v in base_metrics_between.items()},
+                **{f"t4gs_between_{k}": v for k, v in base_metrics_between.items()},
                 **{f"wan_between_{k}": v for k, v in wan_metrics_between.items()},
-                **{f"c4g_all_{k}": v for k, v in base_metrics_all.items()},
+                **{f"t4gs_all_{k}": v for k, v in base_metrics_all.items()},
                 **{f"wan_all_{k}": v for k, v in wan_metrics_all.items()},
             }
             for k, v in metrics_to_save.items():
@@ -495,33 +493,33 @@ def process_scene(
             "test/wan_between_psnr": wan_metrics_between["psnr"],
             "test/wan_between_ssim": wan_metrics_between["ssim"],
             "test/wan_between_lpips": wan_metrics_between["lpips"],
-            "test/c4g_between_psnr": base_metrics_between["psnr"],
-            "test/c4g_between_ssim": base_metrics_between["ssim"],
-            "test/c4g_between_lpips": base_metrics_between["lpips"],
+            "test/t4gs_between_psnr": base_metrics_between["psnr"],
+            "test/t4gs_between_ssim": base_metrics_between["ssim"],
+            "test/t4gs_between_lpips": base_metrics_between["lpips"],
             "test/wan_all_psnr": wan_metrics_all["psnr"],
             "test/wan_all_ssim": wan_metrics_all["ssim"],
             "test/wan_all_lpips": wan_metrics_all["lpips"],
-            "test/c4g_all_psnr": base_metrics_all["psnr"],
-            "test/c4g_all_ssim": base_metrics_all["ssim"],
-            "test/c4g_all_lpips": base_metrics_all["lpips"],
+            "test/t4gs_all_psnr": base_metrics_all["psnr"],
+            "test/t4gs_all_ssim": base_metrics_all["ssim"],
+            "test/t4gs_all_lpips": base_metrics_all["lpips"],
             f"test/view2_between/{scene_name}": wandb.Video(
                 np.stack([cv2.cvtColor(f, cv2.COLOR_BGR2RGB) for f in combined_between], axis=0).transpose(0, 3, 1, 2),
                 fps=fps, format="mp4",
-                caption=f"c4g | gt | wan | {caption}",
+                caption=f"t4gs | gt | wan | {caption}",
             ),
         })
 
     return {
-        "c4g_between_psnr": base_metrics_between["psnr"], "c4g_between_ssim": base_metrics_between["ssim"], "c4g_between_lpips": base_metrics_between["lpips"],
+        "t4gs_between_psnr": base_metrics_between["psnr"], "t4gs_between_ssim": base_metrics_between["ssim"], "t4gs_between_lpips": base_metrics_between["lpips"],
         "wan_between_psnr": wan_metrics_between["psnr"], "wan_between_ssim": wan_metrics_between["ssim"], "wan_between_lpips": wan_metrics_between["lpips"],
-        "c4g_all_psnr": base_metrics_all["psnr"], "c4g_all_ssim": base_metrics_all["ssim"], "c4g_all_lpips": base_metrics_all["lpips"],
+        "t4gs_all_psnr": base_metrics_all["psnr"], "t4gs_all_ssim": base_metrics_all["ssim"], "t4gs_all_lpips": base_metrics_all["lpips"],
         "wan_all_psnr": wan_metrics_all["psnr"], "wan_all_ssim": wan_metrics_all["ssim"], "wan_all_lpips": wan_metrics_all["lpips"],
         "caption": caption,
     }
 
 
 def main():
-    parser = argparse.ArgumentParser(description="WAN DAVIS eval for 480x832 C4G outputs")
+    parser = argparse.ArgumentParser(description="WAN DAVIS eval for 480x832 T4GS outputs")
     parser.add_argument("--precomputed_root", default=DEFAULT_PRECOMPUTED_ROOT)
     parser.add_argument("--scenes", nargs="*", default=None,
                         help="Scene names (without davis_ prefix). Default: auto-discover.")
@@ -539,7 +537,7 @@ def main():
     parser.add_argument("--output_root", type=str,
                         default="./outputs/wan_eval")
     parser.add_argument("--output_dir", type=str, default=None,
-                        help="직접 출력 폴더 지정 (재시작용). 지정하면 output_root/lora/timestamp 무시.")
+                        help="Explicit output directory (for restarts); overrides output_root/lora/timestamp.")
 
     parser.add_argument("--wandb_project", type=str, default=None)
     parser.add_argument("--wandb_run_name", type=str, default=None)
@@ -620,29 +618,29 @@ def main():
 
     print("\n" + "=" * 72)
     print(f"[summary] scenes={len(all_metrics)}")
-    print(f"{'Scene':<22} {'C4G_B_PSNR':>10} {'WAN_B_PSNR':>10} {'C4G_A_PSNR':>10} {'WAN_A_PSNR':>10}")
+    print(f"{'Scene':<22} {'T4GS_B_PSNR':>10} {'WAN_B_PSNR':>10} {'T4GS_A_PSNR':>10} {'WAN_A_PSNR':>10}")
     print("-" * 72)
-    c4g_pb, wan_pb, c4g_pa, wan_pa = [], [], [], []
-    c4g_sb, wan_sb, c4g_sa, wan_sa = [], [], [], []
-    c4g_lb, wan_lb, c4g_la, wan_la = [], [], [], []
+    t4gs_pb, wan_pb, t4gs_pa, wan_pa = [], [], [], []
+    t4gs_sb, wan_sb, t4gs_sa, wan_sa = [], [], [], []
+    t4gs_lb, wan_lb, t4gs_la, wan_la = [], [], [], []
     for sname, m in all_metrics.items():
-        print(f"{sname:<22} {m['c4g_between_psnr']:>10.2f} {m['wan_between_psnr']:>10.2f} {m['c4g_all_psnr']:>10.2f} {m['wan_all_psnr']:>10.2f}")
-        c4g_pb.append(m["c4g_between_psnr"]); wan_pb.append(m["wan_between_psnr"])
-        c4g_pa.append(m["c4g_all_psnr"]); wan_pa.append(m["wan_all_psnr"])
-        c4g_sb.append(m["c4g_between_ssim"]); wan_sb.append(m["wan_between_ssim"])
-        c4g_sa.append(m["c4g_all_ssim"]); wan_sa.append(m["wan_all_ssim"])
-        c4g_lb.append(m["c4g_between_lpips"]); wan_lb.append(m["wan_between_lpips"])
-        c4g_la.append(m["c4g_all_lpips"]); wan_la.append(m["wan_all_lpips"])
-    if c4g_pb:
+        print(f"{sname:<22} {m['t4gs_between_psnr']:>10.2f} {m['wan_between_psnr']:>10.2f} {m['t4gs_all_psnr']:>10.2f} {m['wan_all_psnr']:>10.2f}")
+        t4gs_pb.append(m["t4gs_between_psnr"]); wan_pb.append(m["wan_between_psnr"])
+        t4gs_pa.append(m["t4gs_all_psnr"]); wan_pa.append(m["wan_all_psnr"])
+        t4gs_sb.append(m["t4gs_between_ssim"]); wan_sb.append(m["wan_between_ssim"])
+        t4gs_sa.append(m["t4gs_all_ssim"]); wan_sa.append(m["wan_all_ssim"])
+        t4gs_lb.append(m["t4gs_between_lpips"]); wan_lb.append(m["wan_between_lpips"])
+        t4gs_la.append(m["t4gs_all_lpips"]); wan_la.append(m["wan_all_lpips"])
+    if t4gs_pb:
         print("-" * 72)
-        print(f"{'Mean':<22} {np.mean(c4g_pb):>10.2f} {np.mean(wan_pb):>10.2f} {np.mean(c4g_pa):>10.2f} {np.mean(wan_pa):>10.2f}")
+        print(f"{'Mean':<22} {np.mean(t4gs_pb):>10.2f} {np.mean(wan_pb):>10.2f} {np.mean(t4gs_pa):>10.2f} {np.mean(wan_pa):>10.2f}")
         print(
-            f"[mean-ssim] between: c4g={np.mean(c4g_sb):.4f} wan={np.mean(wan_sb):.4f} | "
-            f"all: c4g={np.mean(c4g_sa):.4f} wan={np.mean(wan_sa):.4f}"
+            f"[mean-ssim] between: t4gs={np.mean(t4gs_sb):.4f} wan={np.mean(wan_sb):.4f} | "
+            f"all: t4gs={np.mean(t4gs_sa):.4f} wan={np.mean(wan_sa):.4f}"
         )
         print(
-            f"[mean-lpips] between: c4g={np.mean(c4g_lb):.4f} wan={np.mean(wan_lb):.4f} | "
-            f"all: c4g={np.mean(c4g_la):.4f} wan={np.mean(wan_la):.4f}"
+            f"[mean-lpips] between: t4gs={np.mean(t4gs_lb):.4f} wan={np.mean(wan_lb):.4f} | "
+            f"all: t4gs={np.mean(t4gs_la):.4f} wan={np.mean(wan_la):.4f}"
         )
     print("=" * 72)
 
@@ -654,8 +652,8 @@ def main():
         with open(csv_path, "w", newline="") as f:
             w = csv.DictWriter(f, fieldnames=[
                 "scene",
-                "c4g_between_psnr", "wan_between_psnr", "c4g_between_ssim", "wan_between_ssim", "c4g_between_lpips", "wan_between_lpips",
-                "c4g_all_psnr", "wan_all_psnr", "c4g_all_ssim", "wan_all_ssim", "c4g_all_lpips", "wan_all_lpips",
+                "t4gs_between_psnr", "wan_between_psnr", "t4gs_between_ssim", "wan_between_ssim", "t4gs_between_lpips", "wan_between_lpips",
+                "t4gs_all_psnr", "wan_all_psnr", "t4gs_all_ssim", "wan_all_ssim", "t4gs_all_lpips", "wan_all_lpips",
             ])
             w.writeheader()
             for sname, m in all_metrics.items():

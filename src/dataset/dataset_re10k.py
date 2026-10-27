@@ -17,6 +17,7 @@ from torch.utils.data import Dataset
 
 from ..geometry.projection import get_fov
 from .dataset import DatasetCfgCommon
+from .intrinsics import davis_intrinsics_like, maybe_apply_davis_intrinsics
 from .shims.augmentation_shim import apply_augmentation_shim
 from .shims.crop_shim import apply_crop_shim
 from .types import Stage
@@ -36,6 +37,12 @@ class DatasetRE10kCfg(DatasetCfgCommon):
     relative_pose: bool
     skip_bad_shape: bool
     fake_time_labels: bool = True
+
+    # Share of the mixed training sampler given to this dataset.
+    sample_weight: float = 1.0
+    # Ship an all-static motion mask (the scenes are static) so the static
+    # anchor loss applies to every Gaussian.
+    static_motion_mask: bool = False
 
 
 @dataclass
@@ -130,6 +137,8 @@ class DatasetRE10k(Dataset):
         del chunk
 
         extrinsics, intrinsics = self.convert_poses(example["cameras"])
+        if self.cfg.force_davis_intrinsics:
+            intrinsics = davis_intrinsics_like(intrinsics)
         scene = example["key"]
 
         context_indices, target_indices, overlap = self.view_sampler.sample(
@@ -228,7 +237,12 @@ class DatasetRE10k(Dataset):
         }
         if self.stage == "train" and self.cfg.augment:
             result = apply_augmentation_shim(result)
-        return apply_crop_shim(result, tuple(self.cfg.input_image_shape))
+        result = apply_crop_shim(result, tuple(self.cfg.input_image_shape))
+        if self.cfg.static_motion_mask:
+            h, w = self.cfg.input_image_shape
+            result["context"]["motion_mask"] = torch.zeros(num_ctx, h, w)
+            result["target"]["motion_mask"] = torch.zeros(num_tgt, h, w)
+        return maybe_apply_davis_intrinsics(result, self.cfg.force_davis_intrinsics)
 
     def convert_poses(
         self,

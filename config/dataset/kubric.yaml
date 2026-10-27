@@ -12,10 +12,10 @@ cameras_are_circular: false
 baseline_min: 1e-3
 baseline_max: 1e10
 max_fov: 100.0
-rescale_to_1cube: true
+rescale_to_1cube: false
 num_temporal_frames: 32
 num_context_timestamps: 6
-render_config_include: [small_baseline]
+render_config_include: [kubric]
 
 view_sampler:
   warm_up_steps: 0

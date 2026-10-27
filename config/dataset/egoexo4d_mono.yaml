@@ -1,0 +1,20 @@
+defaults:
+  - base_dataset
+  - view_sampler: uniform
+
+name: egoexo4d_mono
+roots: [/path/to/EgoExo4D]
+
+input_image_shape: [224, 224]
+original_image_shape: [448, 796]
+cameras_are_circular: false
+
+baseline_min: 1e-3
+baseline_max: 1e10
+max_fov: 100.0
+frame_stride: 10
+
+view_sampler:
+  warm_up_steps: 5000
+  initial_gap: 2
+  gap: 2
