@@ -31,7 +31,7 @@
 
   <p align='center'><sup>*</sup>Co-first author, †Co-corresponding author</p>
 
-  <h3 align="center"><a href="https://cvlab-kaist.github.io/C4G">Project Page</a></h3>
+  <h3 align="center"><a href="https://cvlab-kaist.github.io/T4GS">Project Page</a></h3>
   <div align="center"></div>
 </p>
 
@@ -56,8 +56,8 @@ Our code is developed based on PyTorch 2.2.0, CUDA 12.1, and Python 3.10.
 We recommend using [conda](https://docs.anaconda.com/miniconda/) for installation:
 
 ```bash
-git clone --recursive https://github.com/cvlab-kaist/C4G.git
-cd C4G
+git clone --recursive https://github.com/cvlab-kaist/T4GS.git
+cd T4GS
 # (if already cloned without --recursive: git submodule update --init --recursive)
 
 conda create -n t4gs python=3.10
