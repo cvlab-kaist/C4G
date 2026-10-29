@@ -1,7 +1,7 @@
 <p align="center">
   <h1 align="center">Learning Temporally Aware Compact Gaussians <br> for Feed-Forward 4D Reconstruction</h1>
   <p align="center">
-    <a href="">Mungyeom Kim</a><sup>1*</sup>
+    <a href="https://mungyeom011.github.io/">Mungyeom Kim</a><sup>1*</sup>
     ·
     <a href="https://sites.google.com/view/minjeon/home">Minkyeong Jeon</a><sup>1*</sup>
     ·
@@ -13,7 +13,7 @@
     ·
     <a href="https://onground.github.io/">Jisang Han</a><sup>1</sup>
     ·
-    <a href="">Hyeonseo Yu</a><sup>1</sup>
+    <a href="https://hdeori.github.io">Hyeonseo Yu</a><sup>1</sup>
     ·
     <a href="">Donghwan Shin</a><sup>1</sup>
     ·
